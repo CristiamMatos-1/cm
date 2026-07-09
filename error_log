@@ -1,0 +1,4 @@
+[25-Jun-2026 00:30:00 UTC] Erro de conexão: SQLSTATE[28000] [1045] Access denied for user 'coninfom_admin'@'localhost' (using password: YES)
+[25-Jun-2026 01:19:59 UTC] Erro de conexão: SQLSTATE[28000] [1045] Access denied for user 'root'@'localhost' (using password: NO)
+[25-Jun-2026 01:20:05 UTC] Erro de conexão: SQLSTATE[28000] [1045] Access denied for user 'root'@'localhost' (using password: NO)
+[25-Jun-2026 16:16:38 UTC] Erro de conexão: SQLSTATE[28000] [1045] Access denied for user 'coninfom_admin'@'localhost' (using password: YES)
