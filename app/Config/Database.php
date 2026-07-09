@@ -6,16 +6,35 @@ use PDO;
 use PDOException;
 
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'coninfom_itsm';
-    private $username = 'coninfom_admin';
-    private $password = 'SenhaConinfoms2026';
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     public $conn;
+
+    public function __construct() {
+        $this->host = $this->env('DB_HOST', 'localhost');
+        $this->db_name = $this->env('DB_NAME', '');
+        $this->username = $this->env('DB_USER', '');
+        $this->password = $this->env('DB_PASS', '');
+    }
+
+    private function env($key, $default = '') {
+        $value = getenv($key);
+        if ($value === false || $value === null || $value === '') {
+            return $default;
+        }
+        return $value;
+    }
 
     public function getConnection() {
         $this->conn = null;
 
         try {
+            if ($this->db_name === '' || $this->username === '') {
+                throw new PDOException('Configuração de banco incompleta. Defina DB_NAME e DB_USER nas variáveis de ambiente.');
+            }
+
             $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4";
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
