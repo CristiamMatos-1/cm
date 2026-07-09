@@ -6,17 +6,30 @@ use PDO;
 use PDOException;
 
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'coninfom_itsm';
-    private $username = 'coninfom_admin';
-    private $password = 'SenhaConinfoms2026';
+    private $host;
+    private $port;
+    private $db_name;
+    private $username;
+    private $password;
     public $conn;
+
+    public function __construct() {
+        $this->host = $this->env('DB_HOST', 'localhost');
+        $this->port = $this->env('DB_PORT', '3306');
+        $this->db_name = $this->env('DB_NAME', '');
+        $this->username = $this->env('DB_USER', '');
+        $this->password = $this->env('DB_PASSWORD', '');
+    }
 
     public function getConnection() {
         $this->conn = null;
 
         try {
-            $dsn = "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4";
+            if ($this->db_name === '' || $this->username === '') {
+                throw new PDOException('Credenciais não configuradas. Defina DB_NAME e DB_USER no ambiente.');
+            }
+
+            $dsn = "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name . ";charset=utf8mb4";
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -31,5 +44,14 @@ class Database {
         }
 
         return $this->conn;
+    }
+
+    private function env($key, $default = '') {
+        $value = getenv($key);
+        if ($value === false || $value === null) {
+            return $default;
+        }
+
+        return trim($value);
     }
 }
