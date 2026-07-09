@@ -41,23 +41,23 @@ jobs:
             port="$2"
             echo "Tentando deploy com ${protocol}://${SFTP_HOST}:${port}"
 
-            lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" "${protocol}://$SFTP_HOST:$port" <<EOF
-            set cmd:fail-exit yes
-            set net:timeout 20
-            set net:max-retries 1
-            set net:reconnect-interval-base 5
-            set sftp:auto-confirm yes
-            set ssl:verify-certificate no
-            set ftp:ssl-allow no
-            mirror -R --delete --verbose \
-              --exclude-glob .git* \
-              --exclude-glob .github \
-              --exclude-glob error_log \
-              --exclude-glob "*.zip" \
-              --exclude uploads/* \
-              . "$SFTP_REMOTE_DIR"
-            bye
-            EOF
+            lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" "${protocol}://$SFTP_HOST:$port" -e "
+              set cmd:fail-exit yes;
+              set net:timeout 20;
+              set net:max-retries 1;
+              set net:reconnect-interval-base 5;
+              set sftp:auto-confirm yes;
+              set ssl:verify-certificate no;
+              set ftp:ssl-allow no;
+              mirror -R --delete --verbose \
+                --exclude-glob .git* \
+                --exclude-glob .github \
+                --exclude-glob error_log \
+                --exclude-glob '*.zip' \
+                --exclude uploads/* \
+                . '$SFTP_REMOTE_DIR';
+              bye
+            "
           }
 
           protocol="$(echo "${DEPLOY_PROTOCOL:-}" | tr '[:upper:]' '[:lower:]')"
