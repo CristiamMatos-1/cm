@@ -23,3 +23,8 @@ Configure os secrets do repositório:
 - `SFTP_PASSWORD`
 
 Diretório remoto configurado: `/home2/coninfom/public_html/cm`
+
+Observações para evitar erro 404:
+
+- O `.htaccess` da raiz precisa estar publicado.
+- O Apache do cPanel deve estar com `mod_rewrite` habilitado.
