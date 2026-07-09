@@ -1,4 +1,4 @@
-name: Deploy cPanel via SFTP
+name: Deploy cPanel
 
 on:
   workflow_dispatch:
@@ -21,27 +21,68 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Deploy via SFTP
+      - name: Deploy via FTP/SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          DEPLOY_PROTOCOL: ${{ secrets.DEPLOY_PROTOCOL }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           SFTP_REMOTE_DIR: /home2/coninfom/public_html/cm
         run: |
-          lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" "sftp://$SFTP_HOST:${SFTP_PORT:-22}" <<EOF
-          set cmd:fail-exit yes
-          set net:timeout 20
-          set net:max-retries 1
-          set net:reconnect-interval-base 5
-          set sftp:auto-confirm yes
-          set ssl:verify-certificate no
-          mirror -R --delete --verbose \
-            --exclude-glob .git* \
-            --exclude-glob .github \
-            --exclude-glob error_log \
-            --exclude-glob "*.zip" \
-            --exclude uploads/* \
-            . "$SFTP_REMOTE_DIR"
-          bye
-          EOF
+          if [ -z "$SFTP_HOST" ] || [ -z "$SFTP_USERNAME" ] || [ -z "$SFTP_PASSWORD" ]; then
+            echo "Secrets obrigatórios ausentes: SFTP_HOST, SFTP_USERNAME e SFTP_PASSWORD."
+            exit 1
+          fi
+
+          deploy_with_protocol() {
+            protocol="$1"
+            port="$2"
+            echo "Tentando deploy com ${protocol}://${SFTP_HOST}:${port}"
+
+            lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" "${protocol}://$SFTP_HOST:$port" <<EOF
+            set cmd:fail-exit yes
+            set net:timeout 20
+            set net:max-retries 1
+            set net:reconnect-interval-base 5
+            set sftp:auto-confirm yes
+            set ssl:verify-certificate no
+            set ftp:ssl-allow no
+            mirror -R --delete --verbose \
+              --exclude-glob .git* \
+              --exclude-glob .github \
+              --exclude-glob error_log \
+              --exclude-glob "*.zip" \
+              --exclude uploads/* \
+              . "$SFTP_REMOTE_DIR"
+            bye
+            EOF
+          }
+
+          protocol="$(echo "${DEPLOY_PROTOCOL:-}" | tr '[:upper:]' '[:lower:]')"
+          configured_port="${DEPLOY_PORT:-${SFTP_PORT:-}}"
+
+          if [ -n "$protocol" ]; then
+            if [ "$protocol" != "sftp" ] && [ "$protocol" != "ftp" ]; then
+              echo "DEPLOY_PROTOCOL inválido: $protocol (use sftp ou ftp)."
+              exit 1
+            fi
+
+            if [ -z "$configured_port" ]; then
+              if [ "$protocol" = "ftp" ]; then
+                configured_port=21
+              else
+                configured_port=22
+              fi
+            fi
+
+            deploy_with_protocol "$protocol" "$configured_port"
+            exit 0
+          fi
+
+          if deploy_with_protocol "sftp" "${configured_port:-22}"; then
+            exit 0
+          fi
+
+          deploy_with_protocol "ftp" "21"

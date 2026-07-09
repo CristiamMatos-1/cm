@@ -11,16 +11,21 @@ Defina as variáveis de ambiente antes de iniciar a aplicação:
 - `DB_USER` (obrigatória)
 - `DB_PASSWORD` (opcional)
 
-## Deploy com GitHub Actions (cPanel SFTP)
+## Deploy com GitHub Actions (cPanel FTP/SFTP)
 
 Workflow: `.github/workflows/deploy-cpanel-sftp.yml`
 
 Configure os secrets do repositório:
 
 - `SFTP_HOST`
-- `SFTP_PORT` (opcional, padrão 22)
 - `SFTP_USERNAME`
 - `SFTP_PASSWORD`
+- `DEPLOY_PROTOCOL` (opcional: `sftp` ou `ftp`)
+- `DEPLOY_PORT` (opcional: se vazio usa 22 para SFTP e 21 para FTP)
+
+Compatibilidade com configuração anterior:
+
+- `SFTP_PORT` continua suportado (legado)
 
 Diretório remoto configurado: `/home2/coninfom/public_html/cm`
 
