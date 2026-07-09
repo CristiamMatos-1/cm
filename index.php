@@ -7,18 +7,24 @@
 ini_set('session.cookie_httponly', 1); // Impede acesso via JS (XSS)
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_samesite', 'Lax'); // Proteção CSRF básica
-// ini_set('session.cookie_secure', 1); // ATENÇÃO: Descomente esta linha no servidor (cPanel) se usar HTTPS!
+$sessionCookieSecure = getenv('SESSION_COOKIE_SECURE');
+if ($sessionCookieSecure === false) {
+    $sessionCookieSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+}
+ini_set('session.cookie_secure', filter_var($sessionCookieSecure, FILTER_VALIDATE_BOOL) ? 1 : 0);
 
 session_name('ITSM_SESSION');
 session_start();
 
 // 2. Configurações Globais
-define('BASE_URL', '/cm'); // Caminho base configurado para o domínio
+define('BASE_URL', getenv('BASE_URL') ?: '/cm'); // Caminho base configurado para o domínio
 define('APP_PATH', __DIR__ . '/app');
 
-// Habilita a exibição de erros (Em produção no cPanel, altere para 0)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// Controle de debug via variável de ambiente (produção deve ser false)
+$appDebug = filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOL);
+ini_set('display_errors', $appDebug ? 1 : 0);
+ini_set('display_startup_errors', $appDebug ? 1 : 0);
+ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 // 3. Autoload simples para as classes MVC
