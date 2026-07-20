@@ -81,15 +81,26 @@ CREATE TABLE tickets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
     tecnico_id INT,
+    programador_id INT,
+    engenheiro_id INT,
     tipo_servico ENUM('Criacao de Sistema', 'Manutencao em Sistema', 'Manutencao em Computador', 'Envio para Analise', 'Execucao') NOT NULL,
     descricao TEXT NOT NULL,
     atendimento ENUM('remoto', 'presencial'),
-    status ENUM('aberto', 'andamento', 'finalizado') DEFAULT 'aberto',
+    status ENUM('aberto', 'andamento', 'em_analise', 'em_execucao', 'esperando_peca', 'finalizado', 'rejeitado') DEFAULT 'aberto',
     relatorio_final TEXT,
+    valor_pecas DECIMAL(10,2) DEFAULT NULL,
+    valor_mao_obra DECIMAL(10,2) DEFAULT NULL,
+    valor_servico DECIMAL(10,2) DEFAULT NULL,
+    forma_pagamento VARCHAR(50) DEFAULT NULL,
+    autorizado_por VARCHAR(100) DEFAULT NULL,
+    data_autorizacao DATETIME DEFAULT NULL,
+    closed_at DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (tecnico_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (tecnico_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (programador_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (engenheiro_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Tabela de Mídias de Chamados (Fotos/Vídeos)

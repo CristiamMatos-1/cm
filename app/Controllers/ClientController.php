@@ -105,15 +105,15 @@ class ClientController extends Controller {
         if ($chamado && $chamado['cliente_id'] == $_SESSION['user_id']) {
             if ($acao === 'aprovar') {
                 $dados = [
-                    'tecnico_id' => $chamado['tecnico_id'],
-                    'programador_id' => $chamado['programador_id'],
-                    'engenheiro_id' => $chamado['engenheiro_id'],
+                    'tecnico_id' => $chamado['tecnico_id'] ?? null,
+                    'programador_id' => $chamado['programador_id'] ?? null,
+                    'engenheiro_id' => $chamado['engenheiro_id'] ?? null,
                     'status' => 'em_execucao',
-                    'relatorio_final' => $chamado['relatorio_final'],
-                    'valor_pecas' => $chamado['valor_pecas'],
-                    'valor_mao_obra' => $chamado['valor_mao_obra'],
-                    'valor_servico' => $chamado['valor_servico'],
-                    'forma_pagamento' => $chamado['forma_pagamento'],
+                    'relatorio_final' => $chamado['relatorio_final'] ?? '',
+                    'valor_pecas' => $chamado['valor_pecas'] ?? 0,
+                    'valor_mao_obra' => $chamado['valor_mao_obra'] ?? 0,
+                    'valor_servico' => $chamado['valor_servico'] ?? 0,
+                    'forma_pagamento' => $chamado['forma_pagamento'] ?? null,
                     'autorizado_por' => 'sistema_cliente',
                     'data_autorizacao' => date('Y-m-d H:i:s')
                 ];

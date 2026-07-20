@@ -5,6 +5,7 @@ use PDO;
 use Exception;
 
 class ChamadoModel extends Model {
+    private $ticketColumns = null;
     
     /**
      * Retorna o total de chamados de um cliente específico
@@ -40,7 +41,7 @@ class ChamadoModel extends Model {
      */
     public function getAllChamados() {
         $stmt = $this->db->query("
-            SELECT t.*, u.nome as cliente_nome, tec.nome as tecnico_nome 
+            SELECT t.*, u.nome as cliente_nome, u.telefone as cliente_telefone, tec.nome as tecnico_nome 
             FROM tickets t 
             JOIN users u ON t.cliente_id = u.id
             LEFT JOIN users tec ON t.tecnico_id = tec.id
@@ -115,19 +116,28 @@ class ChamadoModel extends Model {
      * Busca os detalhes de um chamado específico
      */
     public function getById($id) {
-        $stmt = $this->db->prepare("
+        $select = "
             SELECT t.*, 
                    c.nome as cliente_nome, c.telefone as cliente_telefone, c.email as cliente_email, 
-                   tec.nome as tecnico_nome, 
-                   prog.nome as programador_nome, 
-                   eng.nome as engenheiro_nome
+                   tec.nome as tecnico_nome
+        ";
+        $joins = "
             FROM tickets t 
             JOIN users c ON t.cliente_id = c.id
             LEFT JOIN users tec ON t.tecnico_id = tec.id
-            LEFT JOIN users prog ON t.programador_id = prog.id
-            LEFT JOIN users eng ON t.engenheiro_id = eng.id
-            WHERE t.id = :id
-        ");
+        ";
+
+        if ($this->hasTicketColumn('programador_id')) {
+            $select .= ", prog.nome as programador_nome";
+            $joins .= " LEFT JOIN users prog ON t.programador_id = prog.id";
+        }
+
+        if ($this->hasTicketColumn('engenheiro_id')) {
+            $select .= ", eng.nome as engenheiro_nome";
+            $joins .= " LEFT JOIN users eng ON t.engenheiro_id = eng.id";
+        }
+
+        $stmt = $this->db->prepare($select . " " . $joins . " WHERE t.id = :id");
         $stmt->bindParam(':id', $id);
         $stmt->execute();
         return $stmt->fetch();
@@ -137,47 +147,46 @@ class ChamadoModel extends Model {
      * Atualiza dados avançados do chamado pelo Admin (Atribuição, Valores, Pagamento)
      */
     public function atualizarChamadoAdmin($id, $dados) {
-        $query = "
-            UPDATE tickets SET 
-                tecnico_id = :tecnico_id,
-                programador_id = :programador_id,
-                engenheiro_id = :engenheiro_id,
-                status = :status,
-                relatorio_final = :relatorio_final,
-                valor_pecas = :valor_pecas,
-                valor_mao_obra = :valor_mao_obra,
-                valor_servico = :valor_servico,
-                forma_pagamento = :forma_pagamento,
-                autorizado_por = :autorizado_por
-        ";
+        $updatableColumns = [
+            'tecnico_id',
+            'programador_id',
+            'engenheiro_id',
+            'status',
+            'relatorio_final',
+            'valor_pecas',
+            'valor_mao_obra',
+            'valor_servico',
+            'forma_pagamento',
+            'autorizado_por'
+        ];
 
-        if ($dados['status'] === 'finalizado') {
-            $query .= ", closed_at = NOW() ";
-        }
-        if (isset($dados['data_autorizacao'])) {
-            $query .= ", data_autorizacao = :data_autorizacao ";
+        $sets = [];
+        $params = [':id' => $id];
+
+        foreach ($updatableColumns as $column) {
+            if ($this->hasTicketColumn($column)) {
+                $sets[] = $column . ' = :' . $column;
+                $params[':' . $column] = $dados[$column] ?? null;
+            }
         }
 
-        $query .= " WHERE id = :id";
-        
+        if (($dados['status'] ?? null) === 'finalizado' && $this->hasTicketColumn('closed_at')) {
+            $sets[] = "closed_at = NOW()";
+        }
+
+        if (isset($dados['data_autorizacao']) && $this->hasTicketColumn('data_autorizacao')) {
+            $sets[] = "data_autorizacao = :data_autorizacao";
+            $params[':data_autorizacao'] = $dados['data_autorizacao'];
+        }
+
+        if (empty($sets)) {
+            return false;
+        }
+
+        $query = "UPDATE tickets SET " . implode(', ', $sets) . " WHERE id = :id";
         $stmt = $this->db->prepare($query);
 
-        $stmt->bindParam(':tecnico_id', $dados['tecnico_id']);
-        $stmt->bindParam(':programador_id', $dados['programador_id']);
-        $stmt->bindParam(':engenheiro_id', $dados['engenheiro_id']);
-        $stmt->bindParam(':status', $dados['status']);
-        $stmt->bindParam(':relatorio_final', $dados['relatorio_final']);
-        $stmt->bindParam(':valor_pecas', $dados['valor_pecas']);
-        $stmt->bindParam(':valor_mao_obra', $dados['valor_mao_obra']);
-        $stmt->bindParam(':valor_servico', $dados['valor_servico']);
-        $stmt->bindParam(':forma_pagamento', $dados['forma_pagamento']);
-        $stmt->bindParam(':autorizado_por', $dados['autorizado_por']);
-        if (isset($dados['data_autorizacao'])) {
-            $stmt->bindParam(':data_autorizacao', $dados['data_autorizacao']);
-        }
-        $stmt->bindParam(':id', $id);
-
-        return $stmt->execute();
+        return $stmt->execute($params);
     }
 
     /**
@@ -216,8 +225,8 @@ class ChamadoModel extends Model {
      * Atualiza dados da triagem/atendimento do chamado
      */
     public function atualizarTriagem($ticket_id, $atendimento, $status, $relatorio) {
-        // Se o status mudar para finalizado, registramos a hora de fechamento
-        if ($status === 'finalizado') {
+        // Se o status mudar para finalizado e a coluna existir, registramos a hora de fechamento.
+        if ($status === 'finalizado' && $this->hasTicketColumn('closed_at')) {
             $stmt = $this->db->prepare("
                 UPDATE tickets 
                 SET atendimento = :atendimento, status = :status, relatorio_final = :relatorio, closed_at = NOW() 
@@ -236,5 +245,15 @@ class ChamadoModel extends Model {
         $stmt->bindParam(':status', $status);
         $stmt->bindParam(':relatorio', $relatorio);
         return $stmt->execute();
+    }
+
+    private function hasTicketColumn($columnName) {
+        if ($this->ticketColumns === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM tickets");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $this->ticketColumns = array_fill_keys($columns, true);
+        }
+
+        return isset($this->ticketColumns[$columnName]);
     }
 }
