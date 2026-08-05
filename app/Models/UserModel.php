@@ -104,6 +104,26 @@ class UserModel extends Model {
             return false;
         }
     }
+
+    /**
+     * Atualiza a senha de um cliente
+     */
+    public function updateClientPassword($id, $senhaHash) {
+        try {
+            $stmt = $this->db->prepare("
+                UPDATE users
+                SET senha = :senha
+                WHERE id = :id AND perfil = 'cliente'
+            ");
+
+            $stmt->bindParam(':senha', $senhaHash);
+            $stmt->bindParam(':id', $id);
+
+            return $stmt->execute();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
     public function getUserByCpfCnpj($cpf_cnpj) {
         $stmt = $this->db->prepare("SELECT * FROM users WHERE cpf_cnpj = :cpf_cnpj LIMIT 1");
         $stmt->bindParam(':cpf_cnpj', $cpf_cnpj);

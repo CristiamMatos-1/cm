@@ -38,6 +38,11 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Telefone/WhatsApp</label>
                     <input type="text" name="telefone" value="<?= htmlspecialchars($cliente['telefone'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nova Senha do Cliente (opcional)</label>
+                    <input type="password" name="senha" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Deixe em branco para manter a senha atual">
+                </div>
             </div>
 
             <hr class="my-6 border-gray-200">

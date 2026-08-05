@@ -41,6 +41,34 @@
     </div>
     <?php endif; ?>
 
+    <!-- Alterar Senha -->
+    <div class="mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-indigo-500">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-lock mr-2 text-indigo-600"></i> Alterar Senha
+            </h3>
+            <form action="<?= BASE_URL ?>/client/atualizarSenha" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Senha Atual</label>
+                    <input type="password" name="senha_atual" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Nova Senha</label>
+                    <input type="password" name="nova_senha" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Confirmar Nova Senha</label>
+                    <input type="password" name="confirmar_senha" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded shadow hover:bg-indigo-700 transition-colors">
+                        Salvar Nova Senha
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Informações do Cliente -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="lg:col-span-2">
@@ -127,4 +155,3 @@
 </div>
 
 <?php require_once APP_PATH . '/Views/layout/footer.php'; ?>
-

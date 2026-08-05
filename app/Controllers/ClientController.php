@@ -104,6 +104,30 @@ class ClientController extends Controller {
         }
     }
 
+    public function atualizarSenha() {
+        $this->requirePost();
+
+        $senhaAtual = $_POST['senha_atual'] ?? '';
+        $novaSenha = $_POST['nova_senha'] ?? '';
+        $confirmarSenha = $_POST['confirmar_senha'] ?? '';
+
+        if (empty($senhaAtual) || empty($novaSenha) || empty($confirmarSenha) || $novaSenha !== $confirmarSenha) {
+            $this->redirect('/client/perfil');
+            return;
+        }
+
+        $userModel = new \app\Models\UserModel();
+        $cliente = $userModel->getUserById($_SESSION['user_id']);
+
+        if (!$cliente || !password_verify($senhaAtual, $cliente['senha'])) {
+            $this->redirect('/client/perfil');
+            return;
+        }
+
+        $userModel->updateClientPassword($_SESSION['user_id'], password_hash($novaSenha, PASSWORD_BCRYPT, ['cost' => 12]));
+        $this->redirect('/client/perfil');
+    }
+
     public function chamados() {
         $chamadoModel = new ChamadoModel();
         $meusChamados = $chamadoModel->getLatestByCliente($_SESSION['user_id'], 50); // Pega os últimos 50

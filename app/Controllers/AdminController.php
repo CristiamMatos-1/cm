@@ -227,6 +227,12 @@ class AdminController extends Controller {
         $clienteModel = new ClienteModel();
         $clienteModel->updateCliente($id, $dados);
 
+        $novaSenha = $_POST['senha'] ?? '';
+        if (!empty($novaSenha)) {
+            $userModel = new UserModel();
+            $userModel->updateClientPassword($id, password_hash($novaSenha, PASSWORD_BCRYPT, ['cost' => 12]));
+        }
+
         $this->redirect('/admin/clientes');
     }
 
