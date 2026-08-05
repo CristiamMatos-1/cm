@@ -64,6 +64,7 @@ class OrcamentoModel extends Model {
     }
 
     public function createBudget($data) {
+        // Deploy marker: ensures the updated budget insert logic reaches production.
         $token = bin2hex(random_bytes(32));
         
         $stmt = $this->db->prepare("

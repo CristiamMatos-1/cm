@@ -49,7 +49,7 @@ jobs:
               set sftp:auto-confirm yes;
               set ssl:verify-certificate no;
               set ftp:ssl-allow no;
-              mirror -R --delete --verbose \
+              mirror -R --delete --delete-excluded --verbose \
                 --exclude-glob .git* \
                 --exclude-glob .github \
                 --exclude-glob error_log \
