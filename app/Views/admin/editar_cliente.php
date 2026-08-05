@@ -166,16 +166,18 @@ function formatNota(fieldId, action) {
     const start = field.selectionStart;
     const end = field.selectionEnd;
     const selected = field.value.substring(start, end);
-    const hasSelection = start !== end;
-    const inner = hasSelection ? selected : 'texto';
-    let replacement = inner;
+    const replacement = selected || 'texto';
 
-    if (action === 'bold') replacement = `<b>${inner}</b>`;
-    if (action === 'italic') replacement = `<i>${inner}</i>`;
-    if (action === 'ul') replacement = `<ul>\n  <li>${inner}</li>\n</ul>`;
-    if (action === 'br') replacement = hasSelection ? `${inner}<br>` : '<br>';
+    if (action === 'bold') {
+        field.setRangeText(`<b>${replacement}</b>`, start, end, 'end');
+    } else if (action === 'italic') {
+        field.setRangeText(`<i>${replacement}</i>`, start, end, 'end');
+    } else if (action === 'ul') {
+        field.setRangeText(`<ul>\n  <li>${replacement}</li>\n</ul>`, start, end, 'end');
+    } else if (action === 'br') {
+        field.setRangeText(selected ? `${replacement}<br>` : '<br>', start, end, 'end');
+    }
 
-    field.value = field.value.substring(0, start) + replacement + field.value.substring(end);
     field.focus();
 }
 </script>
