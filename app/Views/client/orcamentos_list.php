@@ -24,7 +24,8 @@
                             <h4 class="text-lg font-bold text-gray-800"><?= htmlspecialchars($o['titulo']) ?></h4>
                             <p class="text-sm text-gray-500">Enviado em: <?= date('d/m/Y', strtotime($o['created_at'])) ?></p>
                             <?php if ($o['ticket_id']): ?>
-                                <p class="text-xs text-indigo-600 mt-1"><i class="fas fa-link"></i> Referente ao chamado #<?= $o['ticket_id'] ?> (<?= htmlspecialchars($o['tipo_servico']) ?>)</p>
+                                <?php $tipo = htmlspecialchars($o['tipo_servico'] ?? $o['tipo'] ?? 'Serviço'); ?>
+                                <p class="text-xs text-indigo-600 mt-1"><i class="fas fa-link"></i> Referente ao chamado #<?= $o['ticket_id'] ?> (<?= $tipo ?>)</p>
                             <?php endif; ?>
                         </div>
                         <div class="text-right">
