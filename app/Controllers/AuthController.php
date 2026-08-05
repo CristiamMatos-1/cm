@@ -102,7 +102,17 @@ class AuthController extends Controller {
     }
 
     // ==================== Budget Approval via Link ====================
-    public function autorizarOrcamento($token) {
+    public function autorizarOrcamento($token = null) {
+        $token = $token ?: ($_GET['token'] ?? ($_POST['token'] ?? ''));
+
+        if (empty($token)) {
+            $this->view('auth/erro', [
+                'titulo' => 'Link Inválido',
+                'mensagem' => 'O token de autorização não foi informado.'
+            ]);
+            return;
+        }
+
         $orcamentoModel = new \app\Models\OrcamentoModel();
         $budget = $orcamentoModel->getBudgetByToken($token);
 
