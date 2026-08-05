@@ -59,7 +59,7 @@
                                 <?php 
                                     $zap = preg_replace('/\D/', '', $orcamento['cliente_telefone']);
                                     $link = BASE_URL . "/auth/autorizarOrcamento/" . ($orcamento['token_autorizacao'] ?? '');
-                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " está disponível para aprovação. Acesse este link para autorizar ou rejeitar: " . $link);
+                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " está disponível para aprovação.\n\nAcesse o link para autorizar ou rejeitar:\n" . $link);
                                 ?>
                                 <a href="https://wa.me/55<?= $zap ?>?text=<?= $msg ?>" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 mr-3" title="Notificar via WhatsApp">
                                     <i class="fab fa-whatsapp mr-1"></i> WhatsApp
