@@ -280,10 +280,11 @@ class OrcamentoModel extends Model {
                 updated_at = NOW()
             WHERE id = :budget_id
         ");
-        $stmt->bindParam(':valor_pecas', $totals['valor_pecas']);
-        $stmt->bindParam(':valor_mao_obra', $totals['valor_mao_obra']);
-        $stmt->bindParam(':valor_total', $totals['valor_total']);
-        $stmt->bindParam(':budget_id', $budget_id);
-        return $stmt->execute();
+        return $stmt->execute([
+            ':valor_pecas' => $totals['valor_pecas'] ?? 0,
+            ':valor_mao_obra' => $totals['valor_mao_obra'] ?? 0,
+            ':valor_total' => $totals['valor_total'] ?? 0,
+            ':budget_id' => $budget_id,
+        ]);
     }
 }
