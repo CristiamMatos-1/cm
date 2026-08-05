@@ -71,6 +71,12 @@
                     <span class="text-lg font-medium text-corpBlue-800">Valor Total Estimado:</span>
                     <span class="text-2xl font-bold text-corpBlue-900">R$ <span id="valor_total_display">0,00</span></span>
                 </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Data de Validade</label>
+                    <input type="date" name="data_validade" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <p class="text-xs text-gray-500 mt-1">Após esta data, o orçamento fica expirado automaticamente.</p>
+                </div>
             </div>
 
             <div class="flex justify-end">
