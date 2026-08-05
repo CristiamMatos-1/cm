@@ -108,9 +108,11 @@ class ClienteModel extends Model {
     public function getBudgetsByCliente($cliente_id) {
         try {
             $stmt = $this->db->prepare("
-                SELECT * FROM budgets 
-                WHERE cliente_id = :cliente_id 
-                ORDER BY created_at DESC
+                SELECT b.*, u.nome as cliente_nome, u.telefone as cliente_telefone, u.email as cliente_email
+                FROM budgets b
+                JOIN users u ON b.cliente_id = u.id
+                WHERE b.cliente_id = :cliente_id
+                ORDER BY b.created_at DESC
                 LIMIT 50
             ");
             $stmt->execute([':cliente_id' => $cliente_id]);
