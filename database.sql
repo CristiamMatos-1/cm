@@ -114,3 +114,56 @@ CREATE TABLE ticket_media (
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Tabela de Orçamentos (Módulo 2)
+CREATE TABLE budgets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    ticket_id INT,
+    titulo VARCHAR(150) NOT NULL,
+    descricao TEXT NOT NULL,
+    valor_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    valor_pecas DECIMAL(10, 2) DEFAULT NULL,
+    valor_mao_obra DECIMAL(10, 2) DEFAULT NULL,
+    data_validade DATE,
+    status ENUM('pendente', 'aprovado', 'rejeitado', 'expirado') DEFAULT 'pendente',
+    token_autorizacao VARCHAR(255) UNIQUE,
+    autorizado_por INT,
+    data_autorizacao DATETIME,
+    rejeitado_por INT,
+    data_rejeicao DATETIME,
+    motivo_rejeicao TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL,
+    FOREIGN KEY (autorizado_por) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (rejeitado_por) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Tabela de Itens de Orçamento (Peças e Mão de Obra)
+CREATE TABLE budget_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    budget_id INT NOT NULL,
+    tipo ENUM('peca', 'mao_obra', 'servico') NOT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    quantidade INT DEFAULT 1,
+    valor_unitario DECIMAL(10, 2) NOT NULL,
+    subtotal DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Tabela de Serviços Avulsos (Módulo 3)
+CREATE TABLE avulso_services (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    descricao TEXT NOT NULL,
+    valor DECIMAL(10, 2) NOT NULL,
+    data_servico DATE NOT NULL,
+    status ENUM('pendente', 'concluido', 'cancelado') DEFAULT 'pendente',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

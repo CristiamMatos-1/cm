@@ -101,6 +101,90 @@ class AuthController extends Controller {
         $this->redirect('/auth');
     }
 
+    // ==================== Budget Approval via Link ====================
+    public function autorizarOrcamento($token) {
+        $orcamentoModel = new \app\Models\OrcamentoModel();
+        $budget = $orcamentoModel->getBudgetByToken($token);
+
+        if (!$budget) {
+            $this->view('auth/erro', [
+                'titulo' => 'Link Inválido',
+                'mensagem' => 'O link de autorização do orçamento é inválido ou expirou.'
+            ]);
+            return;
+        }
+
+        if ($budget['status'] === 'expirado') {
+            $this->view('auth/erro', [
+                'titulo' => 'Orçamento Expirado',
+                'mensagem' => 'Este orçamento expirou em ' . date('d/m/Y', strtotime($budget['data_validade'])) . '.'
+            ]);
+            return;
+        }
+
+        if ($budget['status'] === 'aprovado') {
+            $this->view('auth/erro', [
+                'titulo' => 'Orçamento Já Aprovado',
+                'mensagem' => 'Este orçamento já foi aprovado.'
+            ]);
+            return;
+        }
+
+        $this->view('auth/autorizar_orcamento', [
+            'budget' => $budget,
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function aprovarOrcamento() {
+        $this->requirePost();
+        $token = $_POST['token'] ?? '';
+
+        $orcamentoModel = new \app\Models\OrcamentoModel();
+        $budget = $orcamentoModel->getBudgetByToken($token);
+
+        if ($budget && $budget['status'] !== 'aprovado' && $budget['status'] !== 'expirado') {
+            $admin_id = $budget['cliente_id'];
+            $orcamentoModel->approveBudget($budget['id'], $admin_id);
+
+            $this->view('auth/sucesso', [
+                'titulo' => 'Orçamento Aprovado',
+                'mensagem' => 'O orçamento #' . $budget['id'] . ' foi aprovado com sucesso! Você será contatado em breve.',
+                'tipo' => 'sucesso'
+            ]);
+        } else {
+            $this->view('auth/erro', [
+                'titulo' => 'Erro ao Aprovar',
+                'mensagem' => 'Não foi possível aprovar o orçamento.'
+            ]);
+        }
+    }
+
+    public function rejeitarOrcamento() {
+        $this->requirePost();
+        $token = $_POST['token'] ?? '';
+        $motivo = Security::sanitizeInput($_POST['motivo'] ?? '');
+
+        $orcamentoModel = new \app\Models\OrcamentoModel();
+        $budget = $orcamentoModel->getBudgetByToken($token);
+
+        if ($budget && $budget['status'] !== 'rejeitado' && $budget['status'] !== 'expirado') {
+            $admin_id = $budget['cliente_id'];
+            $orcamentoModel->rejectBudget($budget['id'], $admin_id, $motivo);
+
+            $this->view('auth/sucesso', [
+                'titulo' => 'Orçamento Rejeitado',
+                'mensagem' => 'O orçamento #' . $budget['id'] . ' foi rejeitado. O responsável será notificado.',
+                'tipo' => 'rejeicao'
+            ]);
+        } else {
+            $this->view('auth/erro', [
+                'titulo' => 'Erro ao Rejeitar',
+                'mensagem' => 'Não foi possível rejeitar o orçamento.'
+            ]);
+        }
+    }
+
     private function redirectDashboard($type) {
         switch ($type) {
             case 'admin':
