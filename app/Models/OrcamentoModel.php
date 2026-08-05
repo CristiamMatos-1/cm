@@ -70,18 +70,18 @@ class OrcamentoModel extends Model {
             INSERT INTO budgets (cliente_id, ticket_id, titulo, descricao, valor_total, valor_pecas, valor_mao_obra, data_validade, token_autorizacao) 
             VALUES (:cliente_id, :ticket_id, :titulo, :descricao, :valor_total, :valor_pecas, :valor_mao_obra, :data_validade, :token)
         ");
-        
-        $stmt->bindParam(':cliente_id', $data['cliente_id']);
-        $stmt->bindParam(':ticket_id', $data['ticket_id'] ?? null);
-        $stmt->bindParam(':titulo', $data['titulo']);
-        $stmt->bindParam(':descricao', $data['descricao']);
-        $stmt->bindParam(':valor_total', $data['valor_total'] ?? 0);
-        $stmt->bindParam(':valor_pecas', $data['valor_pecas'] ?? null);
-        $stmt->bindParam(':valor_mao_obra', $data['valor_mao_obra'] ?? null);
-        $stmt->bindParam(':data_validade', $data['data_validade'] ?? null);
-        $stmt->bindParam(':token', $token);
-        
-        if ($stmt->execute()) {
+
+        if ($stmt->execute([
+            ':cliente_id' => $data['cliente_id'],
+            ':ticket_id' => $data['ticket_id'] ?? null,
+            ':titulo' => $data['titulo'],
+            ':descricao' => $data['descricao'],
+            ':valor_total' => $data['valor_total'] ?? 0,
+            ':valor_pecas' => $data['valor_pecas'] ?? null,
+            ':valor_mao_obra' => $data['valor_mao_obra'] ?? null,
+            ':data_validade' => $data['data_validade'] ?? null,
+            ':token' => $token,
+        ])) {
             return $this->db->lastInsertId();
         }
         return false;
