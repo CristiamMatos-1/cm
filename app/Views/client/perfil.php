@@ -20,7 +20,7 @@
                     </h3>
                     <div class="bg-white rounded p-4 border-l-4 border-green-400">
                         <div class="text-gray-700 text-base leading-8 space-y-3 whitespace-pre-wrap">
-                            <?= $cliente['anotacoes_visivel'] ?>
+                            <?= nl2br(htmlspecialchars($cliente['anotacoes_visivel'] ?? '')) ?>
                         </div>
                     </div>
                 </div>

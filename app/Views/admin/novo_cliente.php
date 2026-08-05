@@ -96,13 +96,7 @@
                         Anotações Visíveis para o Cliente
                         <span class="text-xs text-gray-500">(O cliente pode visualizar)</span>
                     </label>
-                    <div class="mb-2 flex flex-wrap gap-2">
-                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','bold')"><strong>B</strong></button>
-                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border italic" onclick="formatNota('anotacoes_visivel','italic')">I</button>
-                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','ul')">Lista</button>
-                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','br')">Quebra</button>
-                    </div>
-                    <textarea id="anotacoes_visivel" name="anotacoes_visivel" rows="8" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500 font-mono text-sm" placeholder="Use tags HTML simples como &lt;b&gt;, &lt;i&gt;, &lt;ul&gt;, &lt;li&gt; para formatar o texto..."><?= htmlspecialchars($dados['anotacoes_visivel'] ?? '') ?></textarea>
+                    <textarea id="anotacoes_visivel" name="anotacoes_visivel" rows="10" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-corpBlue-500 font-mono text-sm bg-gray-50" placeholder="# Título&#10;&#10;Texto normal&#10;&#10;**Negrito**&#10;_Itálico_&#10;- Lista"><?= htmlspecialchars($dados['anotacoes_visivel'] ?? '') ?></textarea>
                 </div>
 
                 <div class="col-span-1">
@@ -110,13 +104,7 @@
                         Anotações Internas
                         <span class="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">(Apenas sua empresa)</span>
                     </label>
-                    <div class="mb-2 flex flex-wrap gap-2">
-                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','bold')"><strong>B</strong></button>
-                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border italic" onclick="formatNota('anotacoes_interna','italic')">I</button>
-                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','ul')">Lista</button>
-                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','br')">Quebra</button>
-                    </div>
-                    <textarea id="anotacoes_interna" name="anotacoes_interna" rows="8" class="w-full px-3 py-2 border border-yellow-300 bg-yellow-50 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-sm" placeholder="Use tags HTML simples como &lt;b&gt;, &lt;i&gt;, &lt;ul&gt;, &lt;li&gt; para formatar o texto..."><?= htmlspecialchars($dados['anotacoes_interna'] ?? '') ?></textarea>
+                    <textarea id="anotacoes_interna" name="anotacoes_interna" rows="10" class="w-full px-4 py-3 border border-yellow-300 bg-yellow-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 font-mono text-sm" placeholder="# Título&#10;&#10;Texto normal&#10;&#10;**Negrito**&#10;_Itálico_&#10;- Lista"><?= htmlspecialchars($dados['anotacoes_interna'] ?? '') ?></textarea>
                 </div>
             </div>
 
@@ -167,27 +155,16 @@ function buscarCep(cep) {
     }
 }
 
-function formatNota(fieldId, action) {
-    const field = document.getElementById(fieldId);
-    if (!field) return;
-
-    const start = field.selectionStart;
-    const end = field.selectionEnd;
-    const selected = field.value.substring(start, end);
-    const replacement = selected || 'texto';
-
-    if (action === 'bold') {
-        field.setRangeText(`<b>${replacement}</b>`, start, end, 'end');
-    } else if (action === 'italic') {
-        field.setRangeText(`<i>${replacement}</i>`, start, end, 'end');
-    } else if (action === 'ul') {
-        field.setRangeText(`<ul>\n  <li>${replacement}</li>\n</ul>`, start, end, 'end');
-    } else if (action === 'br') {
-        field.setRangeText(selected ? `${replacement}<br>` : '<br>', start, end, 'end');
-    }
-
-    field.focus();
-}
+const attachDraft = (textareaId) => {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+    const key = `client-note-${textareaId}`;
+    textarea.value = localStorage.getItem(key) ?? textarea.value;
+    textarea.addEventListener('input', () => localStorage.setItem(key, textarea.value));
+    localStorage.setItem(key, textarea.value);
+};
+attachDraft('anotacoes_visivel');
+attachDraft('anotacoes_interna');
 </script>
 
 <?php require_once APP_PATH . '/Views/layout/footer.php'; ?>
