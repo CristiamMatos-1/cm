@@ -70,7 +70,7 @@ class ClientController extends Controller {
 
     public function perfil() {
         try {
-            $db = new \app\Models\Database();
+            $db = new \app\Config\Database();
             $conn = $db->getConnection();
             
             $stmt = $conn->prepare("SELECT id, nome, cpf_cnpj, email, telefone, responsavel_nome, cep, logradouro, numero, complemento, bairro, cidade, estado, anotacoes_visivel FROM users WHERE id = ?");
