@@ -52,10 +52,13 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="<?= BASE_URL ?>/auth/autorizarOrcamento/<?= htmlspecialchars($orcamento['token_autorizacao'] ?? '') ?>" target="_blank" class="text-blue-600 hover:text-blue-900 mr-3" title="Link de autorização pública">
+                                <i class="fas fa-link"></i> Autorizar
+                            </a>
                             <?php if(!empty($orcamento['cliente_telefone'])): ?>
                                 <?php 
                                     $zap = preg_replace('/\D/', '', $orcamento['cliente_telefone']);
-                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " ('" . $orcamento['titulo'] . "') está com o status: " . ucfirst(str_replace('_', ' ', $orcamento['status'])) . ". O valor total estimado é de R$ " . number_format($orcamento['valor'], 2, ',', '.') . ".");
+                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " está disponível para aprovação. Acesse o link para autorizar ou rejeitar.");
                                 ?>
                                 <a href="https://wa.me/55<?= $zap ?>?text=<?= $msg ?>" target="_blank" class="text-green-600 hover:text-green-900 mr-3" title="Notificar via WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
                             <?php endif; ?>

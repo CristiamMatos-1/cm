@@ -7,6 +7,16 @@
         <p class="text-gray-600 mt-2">Resumo dos dados e estatísticas do sistema</p>
     </div>
 
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Atalhos do Sistema</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <a href="<?= BASE_URL ?>/admin/orcamentos" class="p-4 border rounded hover:bg-gray-50">Orçamentos</a>
+            <a href="<?= BASE_URL ?>/admin/dashboard" class="p-4 border rounded hover:bg-gray-50">Dashboard</a>
+            <a href="<?= BASE_URL ?>/admin/servicosAvulsos" class="p-4 border rounded hover:bg-gray-50">Serviços Avulsos</a>
+            <a href="<?= BASE_URL ?>/admin/financeiro" class="p-4 border rounded hover:bg-gray-50">Contratos e NF</a>
+        </div>
+    </div>
+
     <!-- KPIs Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total de Chamados -->

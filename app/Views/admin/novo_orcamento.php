@@ -45,14 +45,26 @@
                     <textarea name="descricao" rows="4" required class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500"></textarea>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor de Peças (R$)</label>
-                    <input type="text" name="valor_pecas" id="valor_pecas" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="0,00" onkeyup="calcularTotal()">
-                </div>
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+                    <div class="md:col-span-3">
+                        <h3 class="text-sm font-semibold text-gray-700">Itens opcionais do orçamento</h3>
+                        <p class="text-xs text-gray-500">Você pode informar valores separados por peça, mão de obra e serviço.</p>
+                    </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor de Mão de Obra (R$)</label>
-                    <input type="text" name="valor_mao_obra" id="valor_mao_obra" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="0,00" onkeyup="calcularTotal()">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Valor de Peças (R$)</label>
+                        <input type="text" name="valor_pecas" id="valor_pecas" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="0,00" onkeyup="calcularTotal()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Valor de Mão de Obra (R$)</label>
+                        <input type="text" name="valor_mao_obra" id="valor_mao_obra" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="0,00" onkeyup="calcularTotal()">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Valor de Serviço (R$)</label>
+                        <input type="text" name="valor_servico" id="valor_servico" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="0,00" onkeyup="calcularTotal()">
+                    </div>
                 </div>
                 
                 <div class="md:col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-100 flex justify-between items-center">
@@ -74,8 +86,9 @@
 function calcularTotal() {
     let pecasStr = document.getElementById('valor_pecas').value.replace(',', '.') || 0;
     let maoObraStr = document.getElementById('valor_mao_obra').value.replace(',', '.') || 0;
-    
-    let total = parseFloat(pecasStr) + parseFloat(maoObraStr);
+    let servicoStr = document.getElementById('valor_servico').value.replace(',', '.') || 0;
+
+    let total = parseFloat(pecasStr) + parseFloat(maoObraStr) + parseFloat(servicoStr);
     
     if(!isNaN(total)) {
         document.getElementById('valor_total_display').innerText = total.toFixed(2).replace('.', ',');
