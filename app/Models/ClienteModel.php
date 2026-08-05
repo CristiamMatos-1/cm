@@ -124,28 +124,36 @@ class ClienteModel extends Model {
      * Busca chamados do cliente
      */
     public function getTicketsByCliente($cliente_id) {
-        $stmt = $this->db->prepare("
-            SELECT * FROM chamados 
-            WHERE cliente_id = :cliente_id 
-            ORDER BY created_at DESC
-            LIMIT 50
-        ");
-        $stmt->execute([':cliente_id' => $cliente_id]);
-        return $stmt->fetchAll();
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM tickets 
+                WHERE cliente_id = :cliente_id 
+                ORDER BY created_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([':cliente_id' => $cliente_id]);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
     }
 
     /**
      * Busca serviços avulsos do cliente
      */
     public function getServicesByCliente($cliente_id) {
-        $stmt = $this->db->prepare("
-            SELECT * FROM servicos_avulsos 
-            WHERE cliente_id = :cliente_id 
-            ORDER BY created_at DESC
-            LIMIT 50
-        ");
-        $stmt->execute([':cliente_id' => $cliente_id]);
-        return $stmt->fetchAll();
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM avulso_services 
+                WHERE cliente_id = :cliente_id 
+                ORDER BY created_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([':cliente_id' => $cliente_id]);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
     }
 
     /**
