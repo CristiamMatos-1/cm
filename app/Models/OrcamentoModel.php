@@ -88,36 +88,48 @@ class OrcamentoModel extends Model {
     }
 
     public function updateBudget($id, $data) {
-        $sql = "
-            UPDATE budgets SET 
-                titulo = :titulo,
-                descricao = :descricao,
-                valor_total = :valor_total,
-                valor_pecas = :valor_pecas,
-                valor_mao_obra = :valor_mao_obra,
-                data_validade = :data_validade
-        ";
+        $updates = [
+            'titulo = :titulo',
+            'descricao = :descricao',
+        ];
 
         $params = [
             ':titulo' => $data['titulo'],
             ':descricao' => $data['descricao'],
-            ':valor_total' => $data['valor_total'] ?? 0,
-            ':valor_pecas' => $data['valor_pecas'] ?? null,
-            ':valor_mao_obra' => $data['valor_mao_obra'] ?? null,
-            ':data_validade' => $data['data_validade'] ?? null,
         ];
 
+        if (array_key_exists('valor_total', $data) || array_key_exists('valor', $data)) {
+            $updates[] = 'valor_total = :valor_total';
+            $params[':valor_total'] = $data['valor_total'] ?? $data['valor'] ?? 0;
+        }
+
+        if ($this->hasBudgetColumn('valor_pecas') && array_key_exists('valor_pecas', $data)) {
+            $updates[] = 'valor_pecas = :valor_pecas';
+            $params[':valor_pecas'] = $data['valor_pecas'];
+        }
+
+        if ($this->hasBudgetColumn('valor_mao_obra') && array_key_exists('valor_mao_obra', $data)) {
+            $updates[] = 'valor_mao_obra = :valor_mao_obra';
+            $params[':valor_mao_obra'] = $data['valor_mao_obra'];
+        }
+
+        if ($this->hasBudgetColumn('data_validade') && array_key_exists('data_validade', $data)) {
+            $updates[] = 'data_validade = :data_validade';
+            $params[':data_validade'] = $data['data_validade'];
+        }
+
         if (isset($data['status'])) {
-            $sql .= ", status = :status";
+            $updates[] = "status = :status";
             $params[':status'] = $data['status'];
         }
 
         if (isset($data['autorizado_por'])) {
-            $sql .= ", autorizado_por = :autorizado_por, data_autorizacao = NOW()";
+            $updates[] = "autorizado_por = :autorizado_por";
+            $updates[] = "data_autorizacao = NOW()";
             $params[':autorizado_por'] = $data['autorizado_por'];
         }
 
-        $sql .= " WHERE id = :id";
+        $sql = "UPDATE budgets SET " . implode(', ', $updates) . " WHERE id = :id";
         $params[':id'] = $id;
 
         $stmt = $this->db->prepare($sql);
@@ -182,6 +194,19 @@ class OrcamentoModel extends Model {
             WHERE status IN ('pendente', 'aprovado') AND data_validade < CURDATE()
         ");
         return $stmt->execute();
+    }
+
+    private function hasBudgetColumn($column) {
+        static $columns = null;
+
+        if ($columns === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM budgets");
+            $columns = array_map(static function ($row) {
+                return $row['Field'];
+            }, $stmt->fetchAll());
+        }
+
+        return in_array($column, $columns, true);
     }
 
     // Métodos para itens de orçamento
