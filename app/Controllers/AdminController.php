@@ -6,6 +6,8 @@ use app\Models\FinanceiroModel;
 use app\Models\UserModel;
 use app\Models\ConfigModel;
 use app\Models\OrcamentoModel;
+use app\Models\DashboardModel;
+use app\Models\AvulsoServiceModel;
 use app\Models\ReportModel;
 use app\Models\ContabilModel;
 use app\Models\ProjetoModel;
@@ -923,5 +925,187 @@ class AdminController extends Controller {
         }
 
         $this->redirect('/admin/configuracoes');
+    }
+
+    // ==================== Dashboard ====================
+    public function dashboard() {
+        $dashboardController = new DashboardController();
+        return $dashboardController->index();
+    }
+
+    // ==================== Budget Items Management ====================
+    public function adicionarItemOrcamento() {
+        $this->requirePost();
+        $budget_id = $_POST['budget_id'] ?? null;
+        $tipo = $_POST['tipo'] ?? 'peca';
+        $descricao = $_POST['descricao'] ?? '';
+        $quantidade = (int)($_POST['quantidade'] ?? 1);
+        $valor_unitario = (float)str_replace(',', '.', $_POST['valor_unitario'] ?? '0');
+
+        if ($budget_id && $descricao && $valor_unitario > 0) {
+            $orcamentoModel = new OrcamentoModel();
+            $orcamentoModel->addBudgetItem($budget_id, $tipo, $descricao, $quantidade, $valor_unitario);
+        }
+
+        $this->redirect('/admin/editarOrcamento/' . $budget_id);
+    }
+
+    public function removerItemOrcamento($item_id) {
+        $orcamentoModel = new OrcamentoModel();
+        $stmt = $this->db->prepare("SELECT budget_id FROM budget_items WHERE id = :id");
+        $stmt->bindParam(':id', $item_id);
+        $stmt->execute();
+        $result = $stmt->fetch();
+        $budget_id = $result['budget_id'] ?? null;
+
+        if ($item_id) {
+            $orcamentoModel->deleteBudgetItem($item_id);
+        }
+
+        if ($budget_id) {
+            $this->redirect('/admin/editarOrcamento/' . $budget_id);
+        } else {
+            $this->redirect('/admin/orcamentos');
+        }
+    }
+
+    // ==================== Budget Print ====================
+    public function imprimirOrcamentoNovo($id) {
+        $orcamentoModel = new OrcamentoModel();
+        $budget = $orcamentoModel->getBudgetById($id);
+        $budget_items = $orcamentoModel->getBudgetItems($id);
+
+        if (!$budget) {
+            die("Orçamento não encontrado.");
+        }
+
+        $config = new ConfigModel();
+        $companies = $config->getAllCompanies();
+        $company = $companies[0] ?? null;
+
+        $logo_url = $company['logo_url'] ?? null;
+        $company_name = $company['razao_social'] ?? 'Sua Empresa';
+        $company_cnpj = $company['cnpj'] ?? null;
+        $company_phone = '';
+        $company_email = '';
+
+        require_once APP_PATH . '/Views/admin/imprimir_orcamento.php';
+    }
+
+    // ==================== WhatsApp Approval ====================
+    public function enviarWhatsAppOrcamento($id) {
+        $orcamentoModel = new OrcamentoModel();
+        $userModel = new UserModel();
+        
+        $budget = $orcamentoModel->getBudgetById($id);
+        
+        if (!$budget || empty($budget['cliente_telefone'])) {
+            $_SESSION['error'] = 'Orçamento não encontrado ou cliente sem telefone.';
+            $this->redirect('/admin/editarOrcamento/' . $id);
+            return;
+        }
+
+        $approval_url = BASE_URL . '/auth/autorizarOrcamento/' . $budget['token_autorizacao'];
+        $approval_link = "http://" . $_SERVER['HTTP_HOST'] . $approval_url;
+
+        $mensagem = "Olá " . htmlspecialchars($budget['cliente_nome']) . ",\n\n";
+        $mensagem .= "Seu orçamento #{$id} - *" . htmlspecialchars($budget['titulo']) . "* foi gerado.\n\n";
+        $mensagem .= "💰 Valor Total: *R$ " . number_format($budget['valor_total'], 2, ',', '.') . "*\n";
+        if ($budget['data_validade']) {
+            $mensagem .= "📅 Válido até: *" . date('d/m/Y', strtotime($budget['data_validade'])) . "*\n\n";
+        }
+        $mensagem .= "Clique no link abaixo para visualizar, aprovar ou rejeitar o orçamento:\n";
+        $mensagem .= $approval_link;
+
+        $phone = preg_replace('/[^0-9]/', '', $budget['cliente_telefone']);
+        $whatsapp_url = "https://wa.me/55{$phone}?text=" . urlencode($mensagem);
+
+        $_SESSION['success'] = 'Link do WhatsApp gerado. Você será redirecionado...';
+        $this->redirect($whatsapp_url);
+    }
+
+    // ==================== Avulso Services ====================
+    public function servicosAvulsos() {
+        $avulsoModel = new AvulsoServiceModel();
+        $this->view('admin/servicos_avulsos_list', [
+            'title' => 'Serviços Avulsos',
+            'servicos' => $avulsoModel->getAllServices(),
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function novoServicoAvulso() {
+        $userModel = new UserModel();
+        $this->view('admin/novo_servico_avulso', [
+            'title' => 'Novo Serviço Avulso',
+            'clientes' => $userModel->getAllClients(),
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function salvarServicoAvulsoNovo() {
+        $this->requirePost();
+
+        $valor = (float)str_replace(',', '.', $_POST['valor'] ?? '0');
+        
+        $dados = [
+            'cliente_id' => $_POST['cliente_id'] ?? null,
+            'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
+            'valor' => $valor,
+            'data_servico' => $_POST['data_servico'] ?? date('Y-m-d'),
+            'status' => $_POST['status'] ?? 'pendente'
+        ];
+
+        if ($dados['cliente_id'] && $dados['descricao'] && $valor > 0) {
+            $avulsoModel = new AvulsoServiceModel();
+            $avulsoModel->createService($dados);
+            $_SESSION['success'] = 'Serviço avulso cadastrado com sucesso!';
+        } else {
+            $_SESSION['error'] = 'Preencha todos os campos obrigatórios.';
+        }
+
+        $this->redirect('/admin/servicosAvulsos');
+    }
+
+    public function editarServicoAvulso($id) {
+        $avulsoModel = new AvulsoServiceModel();
+        $servico = $avulsoModel->getServiceById($id);
+
+        if (!$servico) {
+            $this->redirect('/admin/servicosAvulsos');
+            return;
+        }
+
+        $this->view('admin/editar_servico_avulso', [
+            'title' => 'Editar Serviço Avulso',
+            'servico' => $servico,
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function salvarEdicaoServicoAvulso($id) {
+        $this->requirePost();
+
+        $valor = (float)str_replace(',', '.', $_POST['valor'] ?? '0');
+        
+        $dados = [
+            'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
+            'valor' => $valor,
+            'data_servico' => $_POST['data_servico'] ?? date('Y-m-d'),
+            'status' => $_POST['status'] ?? 'pendente'
+        ];
+
+        $avulsoModel = new AvulsoServiceModel();
+        $avulsoModel->updateService($id, $dados);
+        $_SESSION['success'] = 'Serviço avulso atualizado com sucesso!';
+
+        $this->redirect('/admin/servicosAvulsos');
+    }
+
+    public function excluirServicoAvulso($id) {
+        $avulsoModel = new AvulsoServiceModel();
+        $avulsoModel->deleteService($id);
+        $_SESSION['success'] = 'Serviço avulso deletado com sucesso!';
+        $this->redirect('/admin/servicosAvulsos');
     }
 }
