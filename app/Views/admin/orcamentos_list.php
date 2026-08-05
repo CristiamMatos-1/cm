@@ -36,7 +36,7 @@
                             <div class="font-medium"><?= htmlspecialchars($orcamento['titulo']) ?></div>
                             <div class="text-xs text-gray-500 truncate max-w-xs"><?= htmlspecialchars($orcamento['descricao']) ?></div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">R$ <?= number_format($orcamento['valor'], 2, ',', '.') ?></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">R$ <?= number_format($orcamento['valor_total'] ?? 0, 2, ',', '.') ?></td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <?= $orcamento['ticket_id'] ? '<a href="'.BASE_URL.'/admin/chamados" class="text-corpBlue-600 hover:underline">#'.$orcamento['ticket_id'].'</a>' : 'N/A' ?>
                         </td>
@@ -52,15 +52,17 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="<?= BASE_URL ?>/auth/autorizarOrcamento/<?= htmlspecialchars($orcamento['token_autorizacao'] ?? '') ?>" target="_blank" class="text-blue-600 hover:text-blue-900 mr-3" title="Link de autorização pública">
-                                <i class="fas fa-link"></i> Autorizar
+                            <a href="<?= BASE_URL ?>/auth/autorizarOrcamento/<?= htmlspecialchars($orcamento['token_autorizacao'] ?? '') ?>" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 mr-3" title="Link de autorização pública">
+                                <i class="fas fa-link mr-1"></i> Autorizar
                             </a>
                             <?php if(!empty($orcamento['cliente_telefone'])): ?>
                                 <?php 
                                     $zap = preg_replace('/\D/', '', $orcamento['cliente_telefone']);
-                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " está disponível para aprovação. Acesse o link para autorizar ou rejeitar.");
+                                    $msg = urlencode("Olá " . $orcamento['cliente_nome'] . "! Seu orçamento #" . $orcamento['id'] . " está disponível para aprovação. Acesse o link abaixo para autorizar ou rejeitar.");
                                 ?>
-                                <a href="https://wa.me/55<?= $zap ?>?text=<?= $msg ?>" target="_blank" class="text-green-600 hover:text-green-900 mr-3" title="Notificar via WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
+                                <a href="https://wa.me/55<?= $zap ?>?text=<?= $msg ?>" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 mr-3" title="Notificar via WhatsApp">
+                                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                                </a>
                             <?php endif; ?>
                             <a href="<?= BASE_URL ?>/admin/editarOrcamento/<?= $orcamento['id'] ?>" class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i> Editar</a>
                             <a href="<?= BASE_URL ?>/admin/excluirOrcamento/<?= $orcamento['id'] ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir permanentemente este orçamento?');"><i class="fas fa-trash"></i> Excluir</a>

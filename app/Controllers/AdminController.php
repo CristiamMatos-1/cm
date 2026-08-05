@@ -264,7 +264,8 @@ class AdminController extends Controller {
             'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
             'valor_pecas' => $valor_pecas,
             'valor_mao_obra' => $valor_mao_obra,
-            'valor' => $valor_total
+            'valor_total' => $valor_total,
+            'data_validade' => !empty($_POST['data_validade']) ? $_POST['data_validade'] : null
         ];
 
         if ($dados['cliente_id'] && $dados['titulo']) {
