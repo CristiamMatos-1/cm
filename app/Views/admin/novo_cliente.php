@@ -96,8 +96,13 @@
                         Anotações Visíveis para o Cliente
                         <span class="text-xs text-gray-500">(O cliente pode visualizar)</span>
                     </label>
-                    <textarea name="anotacoes_visivel" rows="5" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Escreva anotações que o cliente pode ver...">
-<?= htmlspecialchars($dados['anotacoes_visivel'] ?? '') ?></textarea>
+                    <div class="mb-2 flex flex-wrap gap-2">
+                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','bold')"><strong>B</strong></button>
+                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border italic" onclick="formatNota('anotacoes_visivel','italic')">I</button>
+                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','ul')">Lista</button>
+                        <button type="button" class="px-3 py-1 text-sm bg-gray-100 rounded border" onclick="formatNota('anotacoes_visivel','br')">Quebra</button>
+                    </div>
+                    <textarea id="anotacoes_visivel" name="anotacoes_visivel" rows="8" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500 font-mono text-sm" placeholder="Use tags HTML simples como &lt;b&gt;, &lt;i&gt;, &lt;ul&gt;, &lt;li&gt; para formatar o texto..."><?= htmlspecialchars($dados['anotacoes_visivel'] ?? '') ?></textarea>
                 </div>
 
                 <div class="col-span-1">
@@ -105,8 +110,13 @@
                         Anotações Internas
                         <span class="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">(Apenas sua empresa)</span>
                     </label>
-                    <textarea name="anotacoes_interna" rows="5" class="w-full px-3 py-2 border border-yellow-300 bg-yellow-50 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500" placeholder="Anotações que apenas sua empresa vê...">
-<?= htmlspecialchars($dados['anotacoes_interna'] ?? '') ?></textarea>
+                    <div class="mb-2 flex flex-wrap gap-2">
+                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','bold')"><strong>B</strong></button>
+                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border italic" onclick="formatNota('anotacoes_interna','italic')">I</button>
+                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','ul')">Lista</button>
+                        <button type="button" class="px-3 py-1 text-sm bg-yellow-100 rounded border" onclick="formatNota('anotacoes_interna','br')">Quebra</button>
+                    </div>
+                    <textarea id="anotacoes_interna" name="anotacoes_interna" rows="8" class="w-full px-3 py-2 border border-yellow-300 bg-yellow-50 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-sm" placeholder="Use tags HTML simples como &lt;b&gt;, &lt;i&gt;, &lt;ul&gt;, &lt;li&gt; para formatar o texto..."><?= htmlspecialchars($dados['anotacoes_interna'] ?? '') ?></textarea>
                 </div>
             </div>
 
@@ -155,6 +165,24 @@ function buscarCep(cep) {
                 .catch(error => console.error('Erro:', error));
         }
     }
+}
+
+function formatNota(fieldId, action) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    const start = field.selectionStart;
+    const end = field.selectionEnd;
+    const selected = field.value.substring(start, end) || 'texto';
+    let replacement = selected;
+
+    if (action === 'bold') replacement = `<b>${selected}</b>`;
+    if (action === 'italic') replacement = `<i>${selected}</i>`;
+    if (action === 'ul') replacement = `<ul>\n  <li>${selected}</li>\n</ul>`;
+    if (action === 'br') replacement = `${selected}<br>`;
+
+    field.value = field.value.substring(0, start) + replacement + field.value.substring(end);
+    field.focus();
 }
 </script>
 

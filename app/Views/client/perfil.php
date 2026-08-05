@@ -19,20 +19,8 @@
                         📢 Mensagens da Nossa Equipe
                     </h3>
                     <div class="bg-white rounded p-4 border-l-4 border-green-400">
-                        <div class="text-gray-700 text-base leading-8 space-y-3">
-                            <?php
-                                $anotacoes = htmlspecialchars($cliente['anotacoes_visivel']);
-                                $linhas = explode("\n", $anotacoes);
-                                foreach ($linhas as $linha):
-                                    if (!empty(trim($linha))):
-                            ?>
-                                <div class="text-justify break-words">
-                                    <?= htmlspecialchars($linha) ?>
-                                </div>
-                            <?php
-                                    endif;
-                                endforeach;
-                            ?>
+                        <div class="text-gray-700 text-base leading-8 space-y-3 whitespace-pre-wrap">
+                            <?= $cliente['anotacoes_visivel'] ?>
                         </div>
                     </div>
                 </div>
