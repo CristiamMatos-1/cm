@@ -24,7 +24,7 @@
                                 $anotacoes = htmlspecialchars($cliente['anotacoes_visivel']);
                                 $linhas = explode("\n", $anotacoes);
                                 foreach ($linhas as $linha):
-                                    if (!empty(trim($linha)):
+                                    if (!empty(trim($linha))):
                             ?>
                                 <div class="text-justify break-words">
                                     <?= htmlspecialchars($linha) ?>
