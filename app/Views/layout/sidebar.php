@@ -15,8 +15,11 @@ $userType = $_SESSION['user_type'] ?? 'cliente';
     <!-- Nav Links -->
     <nav class="flex-1">
         <?php if ($userType === 'cliente'): ?>
-            <a href="<?= BASE_URL ?>/client" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white <?= (strpos($_SERVER['REQUEST_URI'], '/client') !== false && strpos($_SERVER['REQUEST_URI'], '/chamados') === false) ? 'bg-corpBlue-700' : '' ?>">
+            <a href="<?= BASE_URL ?>/client" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white <?= (strpos($_SERVER['REQUEST_URI'], '/client') !== false && strpos($_SERVER['REQUEST_URI'], '/chamados') === false && strpos($_SERVER['REQUEST_URI'], '/perfil') === false) ? 'bg-corpBlue-700' : '' ?>">
                 <i class="fas fa-home mr-2 w-5 text-center"></i> Meu Painel
+            </a>
+            <a href="<?= BASE_URL ?>/client/perfil" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white <?= (strpos($_SERVER['REQUEST_URI'], '/perfil') !== false) ? 'bg-corpBlue-700' : '' ?>">
+                <i class="fas fa-user-circle mr-2 w-5 text-center"></i> Meu Perfil
             </a>
             <a href="<?= BASE_URL ?>/client/chamados" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white">
                 <i class="fas fa-ticket-alt mr-2 w-5 text-center"></i> Meus Chamados

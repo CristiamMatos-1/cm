@@ -68,6 +68,42 @@ class ClientController extends Controller {
         ]);
     }
 
+    public function perfil() {
+        try {
+            $db = new \app\Models\Database();
+            $conn = $db->getConnection();
+            
+            $stmt = $conn->prepare("SELECT id, nome, cpf_cnpj, email, telefone, responsavel_nome, cep, logradouro, numero, complemento, bairro, cidade, estado, anotacoes_visivel FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $cliente = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if (!$cliente) {
+                $this->redirect('/client');
+                return;
+            }
+
+            $orcamentoModel = new \app\Models\OrcamentoModel();
+            $chamadoModel = new ChamadoModel();
+            $financeiroModel = new FinanceiroModel();
+            
+            $totalOrcamentos = count($orcamentoModel->getBudgetsByClient($_SESSION['user_id']) ?? []);
+            $totalChamados = $chamadoModel->countByCliente($_SESSION['user_id']);
+            $contratos = $financeiroModel->getContratosByCliente($_SESSION['user_id']);
+            $totalContratos = count($contratos ?? []);
+
+            $this->view('client/perfil', [
+                'title' => 'Meu Perfil',
+                'cliente' => $cliente,
+                'totalOrcamentos' => $totalOrcamentos,
+                'totalChamados' => $totalChamados,
+                'totalContratos' => $totalContratos
+            ]);
+        } catch (\Exception $e) {
+            error_log("Erro ao carregar perfil do cliente: " . $e->getMessage());
+            $this->redirect('/client');
+        }
+    }
+
     public function chamados() {
         $chamadoModel = new ChamadoModel();
         $meusChamados = $chamadoModel->getLatestByCliente($_SESSION['user_id'], 50); // Pega os últimos 50
