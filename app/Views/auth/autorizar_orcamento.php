@@ -58,7 +58,7 @@
 
                     <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <p class="text-xs uppercase text-slate-500 mb-2">Link de aprovação</p>
-                        <p class="text-sm break-all text-slate-700">/cm/auth/autorizarOrcamento/<?= htmlspecialchars($budget['token_autorizacao']) ?></p>
+                        <p class="text-sm break-all text-slate-700">https://coninfoms.com.br/cm/auth/autorizarOrcamento/<?= htmlspecialchars($budget['token_autorizacao']) ?></p>
                     </div>
                 </article>
             </section>
