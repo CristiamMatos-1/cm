@@ -73,7 +73,7 @@
                 
                 <div class="md:col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-100 flex justify-between items-center">
                     <span class="text-lg font-medium text-corpBlue-800">Valor Total Estimado:</span>
-                    <span class="text-2xl font-bold text-corpBlue-900">R$ <span id="valor_total_display"><?= number_format($orcamento['valor'], 2, ',', '.') ?></span></span>
+                    <span class="text-2xl font-bold text-corpBlue-900">R$ <span id="valor_total_display"><?= number_format($orcamento['valor_total'], 2, ',', '.') ?></span></span>
                 </div>
             </div>
 
