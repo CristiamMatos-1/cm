@@ -29,6 +29,35 @@
     </div>
     <?php endif; ?>
 
+    <!-- Notas Fiscais -->
+    <div class="mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-green-500">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i> Minhas Notas Fiscais
+            </h3>
+
+            <?php if (empty($notasFiscais ?? [])): ?>
+                <p class="text-gray-500">Nenhuma nota fiscal disponível no momento.</p>
+            <?php else: ?>
+                <div class="space-y-3">
+                    <?php foreach ($notasFiscais as $n): ?>
+                        <div class="flex items-center justify-between border rounded-lg p-4 bg-gray-50">
+                            <div>
+                                <p class="font-medium text-gray-800">NF #<?= htmlspecialchars($n['numero_nf']) ?></p>
+                                <p class="text-sm text-gray-600"><?= date('d/m/Y', strtotime($n['data_emissao'])) ?> · R$ <?= number_format($n['valor'], 2, ',', '.') ?></p>
+                            </div>
+                            <?php if (!empty($n['arquivo_url'])): ?>
+                                <a href="<?= BASE_URL ?>/<?= $n['arquivo_url'] ?>" target="_blank" class="text-green-600 hover:text-green-800 font-medium text-sm">
+                                    <i class="fas fa-download mr-1"></i> Baixar
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <!-- Alterar Senha -->
     <div class="mb-6">
         <div class="bg-white rounded-lg shadow-md p-6 border-t-4 border-indigo-500">

@@ -79,4 +79,34 @@
     </div>
 </div>
 
+<div class="mt-6 bg-white rounded-lg shadow-sm overflow-hidden border-t-4 border-green-500">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="font-bold text-gray-800"><i class="fas fa-file-invoice-dollar mr-2 text-green-500"></i> Minhas Notas Fiscais</h3>
+    </div>
+    <div class="p-6">
+        <?php if (empty($notas)): ?>
+            <div class="text-center text-gray-500 py-4">
+                <i class="fas fa-file-invoice text-3xl mb-2 text-gray-300"></i>
+                <p>Você ainda não possui notas fiscais registradas.</p>
+            </div>
+        <?php else: ?>
+            <div class="space-y-3">
+                <?php foreach ($notas as $n): ?>
+                    <div class="flex items-center justify-between border rounded-lg p-4 bg-gray-50">
+                        <div>
+                            <p class="font-medium text-gray-800">NF #<?= htmlspecialchars($n['numero_nf']) ?></p>
+                            <p class="text-sm text-gray-600"><?= date('d/m/Y', strtotime($n['data_emissao'])) ?> · R$ <?= number_format($n['valor'], 2, ',', '.') ?></p>
+                        </div>
+                        <?php if (!empty($n['arquivo_url'])): ?>
+                            <a href="<?= BASE_URL ?>/<?= $n['arquivo_url'] ?>" target="_blank" class="text-green-600 hover:text-green-800 font-medium text-sm">
+                                <i class="fas fa-download mr-1"></i> Baixar
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <?php require_once APP_PATH . '/Views/layout/footer.php'; ?>

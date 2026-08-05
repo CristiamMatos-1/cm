@@ -89,6 +89,7 @@ class ClientController extends Controller {
             $totalOrcamentos = count($orcamentoModel->getBudgetsByClient($_SESSION['user_id']) ?? []);
             $totalChamados = $chamadoModel->countByCliente($_SESSION['user_id']);
             $contratos = $financeiroModel->getContratosByCliente($_SESSION['user_id']);
+            $notasFiscais = $financeiroModel->getNotasByCliente($_SESSION['user_id']);
             $totalContratos = count($contratos ?? []);
 
             $this->view('client/perfil', [
@@ -96,7 +97,8 @@ class ClientController extends Controller {
                 'cliente' => $cliente,
                 'totalOrcamentos' => $totalOrcamentos,
                 'totalChamados' => $totalChamados,
-                'totalContratos' => $totalContratos
+                'totalContratos' => $totalContratos,
+                'notasFiscais' => $notasFiscais
             ]);
         } catch (\Exception $e) {
             error_log("Erro ao carregar perfil do cliente: " . $e->getMessage());
