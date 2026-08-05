@@ -4,6 +4,7 @@ namespace app\Controllers;
 use app\Models\ChamadoModel;
 use app\Models\FinanceiroModel;
 use app\Models\UserModel;
+use app\Models\ClienteModel;
 use app\Models\ConfigModel;
 use app\Models\OrcamentoModel;
 use app\Models\DashboardModel;
@@ -161,6 +162,33 @@ class AdminController extends Controller {
         ]);
     }
 
+    public function visualizarCliente($id) {
+        $clienteModel = new ClienteModel();
+        $cliente = $clienteModel->getClienteById($id);
+
+        if (!$cliente) {
+            $this->redirect('/admin/clientes');
+            return;
+        }
+
+        // Buscar contratos, notas e outros documentos do cliente
+        $contratos = $clienteModel->getContractsByCliente($id);
+        $notas = $clienteModel->getNotesByCliente($id);
+        $orcamentos = $clienteModel->getBudgetsByCliente($id);
+        $chamados = $clienteModel->getTicketsByCliente($id);
+        $servicos = $clienteModel->getServicesByCliente($id);
+
+        $this->view('admin/visualizar_cliente', [
+            'title' => 'Perfil do Cliente',
+            'cliente' => $cliente,
+            'contratos' => $contratos,
+            'notas' => $notas,
+            'orcamentos' => $orcamentos,
+            'chamados' => $chamados,
+            'servicos' => $servicos
+        ]);
+    }
+
     public function editarCliente($id) {
         $userModel = new UserModel();
         $cliente = $userModel->getUserById($id);
@@ -191,14 +219,80 @@ class AdminController extends Controller {
             'bairro' => Security::sanitizeInput($_POST['bairro'] ?? ''),
             'cidade' => Security::sanitizeInput($_POST['cidade'] ?? ''),
             'estado' => Security::sanitizeInput($_POST['estado'] ?? ''),
-            'responsavel_nome' => Security::sanitizeInput($_POST['responsavel_nome'] ?? '')
+            'responsavel_nome' => Security::sanitizeInput($_POST['responsavel_nome'] ?? ''),
+            'anotacoes_visivel' => $_POST['anotacoes_visivel'] ?? '',
+            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? ''
         ];
 
-        $userModel = new UserModel();
-        $userModel->updateClient($id, $dados);
+        $clienteModel = new ClienteModel();
+        $clienteModel->updateCliente($id, $dados);
 
         $this->redirect('/admin/clientes');
     }
+
+    public function novoCliente() {
+        $this->view('admin/novo_cliente', [
+            'title' => 'Criar Novo Cliente',
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function salvarNovoCliente() {
+        $this->requirePost();
+
+        $dados = [
+            'cpf_cnpj' => Security::sanitizeInput($_POST['cpf_cnpj'] ?? ''),
+            'nome' => Security::sanitizeInput($_POST['nome'] ?? ''),
+            'email' => Security::sanitizeInput($_POST['email'] ?? ''),
+            'telefone' => Security::sanitizeInput($_POST['telefone'] ?? ''),
+            'responsavel_nome' => Security::sanitizeInput($_POST['responsavel_nome'] ?? ''),
+            'cep' => Security::sanitizeInput($_POST['cep'] ?? ''),
+            'logradouro' => Security::sanitizeInput($_POST['logradouro'] ?? ''),
+            'numero' => Security::sanitizeInput($_POST['numero'] ?? ''),
+            'complemento' => Security::sanitizeInput($_POST['complemento'] ?? ''),
+            'bairro' => Security::sanitizeInput($_POST['bairro'] ?? ''),
+            'cidade' => Security::sanitizeInput($_POST['cidade'] ?? ''),
+            'estado' => Security::sanitizeInput($_POST['estado'] ?? ''),
+            'anotacoes_visivel' => $_POST['anotacoes_visivel'] ?? '',
+            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? ''
+        ];
+
+        $userModel = new UserModel();
+        
+        // Verifica se o CPF/CNPJ já existe
+        if ($userModel->getUserByCpfCnpj($dados['cpf_cnpj'])) {
+            $this->view('admin/novo_cliente', [
+                'title' => 'Criar Novo Cliente',
+                'csrf_token' => Security::generateCsrfToken(),
+                'erro' => 'Este CPF ou CNPJ já está cadastrado.',
+                'dados' => $dados
+            ]);
+            return;
+        }
+
+        // Verifica se o E-mail já existe
+        if (!empty($dados['email']) && $userModel->getUserByEmail($dados['email'])) {
+            $this->view('admin/novo_cliente', [
+                'title' => 'Criar Novo Cliente',
+                'csrf_token' => Security::generateCsrfToken(),
+                'erro' => 'Este e-mail já está cadastrado.',
+                'dados' => $dados
+            ]);
+            return;
+        }
+
+        // Gera uma senha aleatória para o cliente
+        $senha = bin2hex(random_bytes(8));
+        $dados['senha'] = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
+        $dados['perfil'] = 'cliente';
+
+        $userModel->createUser($dados);
+
+        // Aqui você poderia enviar um email com as credenciais temporárias
+
+        $this->redirect('/admin/clientes');
+    }
+
 
     public function excluirUsuario($id) {
         // Não permite excluir a si mesmo

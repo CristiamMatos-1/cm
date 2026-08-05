@@ -2,6 +2,9 @@
 
 <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
     <h2 class="text-2xl font-bold text-gray-800">Meus Clientes</h2>
+    <a href="<?= BASE_URL ?>/admin/novoCliente" class="bg-indigo-600 text-white px-4 py-2 rounded shadow hover:bg-indigo-700 transition-colors inline-flex items-center justify-center">
+        <i class="fas fa-plus mr-2"></i> Novo Cliente
+    </a>
 </div>
 
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -28,6 +31,7 @@
                         <div><?= htmlspecialchars($c['email']) ?></div>
                     </td>
                     <td class="px-6 py-4 text-sm font-medium">
+                        <a href="<?= BASE_URL ?>/admin/visualizarCliente/<?= $c['id'] ?>" class="text-green-600 hover:text-green-900 mr-3">Visualizar</a>
                         <a href="<?= BASE_URL ?>/admin/editarCliente/<?= $c['id'] ?>" class="text-indigo-600 hover:text-indigo-900">Editar</a>
                     </td>
                 </tr>

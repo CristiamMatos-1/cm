@@ -2,41 +2,47 @@
 
 <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Editar Cliente</h2>
+        <h2 class="text-2xl font-bold text-gray-800">Criar Novo Cliente</h2>
         <a href="<?= BASE_URL ?>/admin/clientes" class="text-gray-500 hover:text-gray-700">
             <i class="fas fa-arrow-left mr-1"></i> Voltar
         </a>
     </div>
 
+    <?php if (isset($erro) && !empty($erro)): ?>
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i> <?= htmlspecialchars($erro) ?>
+        </div>
+    <?php endif; ?>
+
     <div class="bg-white rounded-lg shadow-sm p-6">
-        <form action="<?= BASE_URL ?>/admin/salvarEdicaoCliente/<?= $cliente['id'] ?>" method="POST">
+        <form action="<?= BASE_URL ?>/admin/salvarNovoCliente" method="POST">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Informações Básicas -->
                 <div class="col-span-2 md:col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nome/Razão Social *</label>
-                    <input type="text" name="nome" value="<?= htmlspecialchars($cliente['nome'] ?? '') ?>" required class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="nome" value="<?= htmlspecialchars($dados['nome'] ?? '') ?>" required class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Nome ou razão social">
                 </div>
                 
                 <div class="col-span-2 md:col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Responsável (Empresas)</label>
-                    <input type="text" name="responsavel_nome" value="<?= htmlspecialchars($cliente['responsavel_nome'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ *</label>
+                    <input type="text" name="cpf_cnpj" value="<?= htmlspecialchars($dados['cpf_cnpj'] ?? '') ?>" required class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="XXX.XXX.XXX-XX ou XX.XXX.XXX/XXXX-XX">
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ (Apenas Leitura)</label>
-                    <input type="text" value="<?= htmlspecialchars($cliente['cpf_cnpj'] ?? '') ?>" readonly class="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded cursor-not-allowed">
+                <div class="col-span-2 md:col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Responsável (Empresas)</label>
+                    <input type="text" name="responsavel_nome" value="<?= htmlspecialchars($dados['responsavel_nome'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Deixe em branco para pessoas físicas">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                    <input type="email" name="email" value="<?= htmlspecialchars($cliente['email'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="email" name="email" value="<?= htmlspecialchars($dados['email'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="email@example.com">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Telefone/WhatsApp</label>
-                    <input type="text" name="telefone" value="<?= htmlspecialchars($cliente['telefone'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="telefone" value="<?= htmlspecialchars($dados['telefone'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="(XX) XXXXX-XXXX">
                 </div>
             </div>
 
@@ -46,38 +52,38 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                    <input type="text" name="cep" id="cep" value="<?= htmlspecialchars($cliente['cep'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" onblur="buscarCep(this.value)">
+                    <input type="text" name="cep" id="cep" value="<?= htmlspecialchars($dados['cep'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" onblur="buscarCep(this.value)" placeholder="XXXXX-XXX">
                     <span id="cep-error" class="text-xs text-red-500 hidden mt-1">CEP não encontrado</span>
                 </div>
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
-                    <input type="text" name="logradouro" id="logradouro" value="<?= htmlspecialchars($cliente['logradouro'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="logradouro" id="logradouro" value="<?= htmlspecialchars($dados['logradouro'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Número</label>
-                    <input type="text" name="numero" value="<?= htmlspecialchars($cliente['numero'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="numero" value="<?= htmlspecialchars($dados['numero'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
-                    <input type="text" name="complemento" value="<?= htmlspecialchars($cliente['complemento'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="complemento" value="<?= htmlspecialchars($dados['complemento'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Apto, sala, etc">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-                    <input type="text" name="bairro" id="bairro" value="<?= htmlspecialchars($cliente['bairro'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="bairro" id="bairro" value="<?= htmlspecialchars($dados['bairro'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                    <input type="text" name="cidade" id="cidade" value="<?= htmlspecialchars($cliente['cidade'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                    <input type="text" name="cidade" id="cidade" value="<?= htmlspecialchars($dados['cidade'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Estado (UF)</label>
-                    <input type="text" name="estado" id="estado" maxlength="2" value="<?= htmlspecialchars($cliente['estado'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500 uppercase">
+                    <input type="text" name="estado" id="estado" maxlength="2" value="<?= htmlspecialchars($dados['estado'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500 uppercase" placeholder="SP">
                 </div>
             </div>
 
@@ -91,7 +97,7 @@
                         <span class="text-xs text-gray-500">(O cliente pode visualizar)</span>
                     </label>
                     <textarea name="anotacoes_visivel" rows="5" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Escreva anotações que o cliente pode ver...">
-<?= htmlspecialchars($cliente['anotacoes_visivel'] ?? '') ?></textarea>
+<?= htmlspecialchars($dados['anotacoes_visivel'] ?? '') ?></textarea>
                 </div>
 
                 <div class="col-span-1">
@@ -100,16 +106,27 @@
                         <span class="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">(Apenas sua empresa)</span>
                     </label>
                     <textarea name="anotacoes_interna" rows="5" class="w-full px-3 py-2 border border-yellow-300 bg-yellow-50 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500" placeholder="Anotações que apenas sua empresa vê...">
-<?= htmlspecialchars($cliente['anotacoes_interna'] ?? '') ?></textarea>
+<?= htmlspecialchars($dados['anotacoes_interna'] ?? '') ?></textarea>
                 </div>
             </div>
 
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="font-bold text-blue-900 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i> Informações Importantes
+                </h4>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li><i class="fas fa-check mr-2"></i>Uma senha aleatória será gerada e o cliente poderá alterar após o primeiro login</li>
+                    <li><i class="fas fa-check mr-2"></i>O cliente receberá um email com suas credenciais de acesso</li>
+                    <li><i class="fas fa-check mr-2"></i>CPF/CNPJ e E-mail devem ser únicos no sistema</li>
+                </ul>
+            </div>
+
             <div class="mt-8 flex justify-end gap-4">
-                <a href="<?= BASE_URL ?>/admin/visualizarCliente/<?= $cliente['id'] ?>" class="bg-gray-300 text-gray-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition-colors">
-                    Visualizar Perfil
+                <a href="<?= BASE_URL ?>/admin/clientes" class="bg-gray-300 text-gray-700 px-6 py-2 rounded shadow hover:bg-gray-400 transition-colors">
+                    Cancelar
                 </a>
                 <button type="submit" class="bg-corpBlue-600 text-white px-6 py-2 rounded shadow hover:bg-corpBlue-700 transition-colors">
-                    Salvar Alterações
+                    <i class="fas fa-save mr-2"></i> Criar Cliente
                 </button>
             </div>
         </form>
