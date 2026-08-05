@@ -88,29 +88,36 @@ class ClienteModel extends Model {
      * Busca notas fiscais/documentos do cliente
      */
     public function getNotesByCliente($cliente_id) {
-        // Busca em notas (se existir tabela de notas)
-        $stmt = $this->db->prepare("
-            SELECT * FROM notas 
-            WHERE cliente_id = :cliente_id 
-            ORDER BY created_at DESC
-            LIMIT 100
-        ");
-        $stmt->execute([':cliente_id' => $cliente_id]);
-        return $stmt->fetchAll();
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM notas 
+                WHERE cliente_id = :cliente_id 
+                ORDER BY created_at DESC
+                LIMIT 100
+            ");
+            $stmt->execute([':cliente_id' => $cliente_id]);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
     }
 
     /**
      * Busca orçamentos do cliente
      */
     public function getBudgetsByCliente($cliente_id) {
-        $stmt = $this->db->prepare("
-            SELECT * FROM orcamentos 
-            WHERE cliente_id = :cliente_id 
-            ORDER BY created_at DESC
-            LIMIT 50
-        ");
-        $stmt->execute([':cliente_id' => $cliente_id]);
-        return $stmt->fetchAll();
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM budgets 
+                WHERE cliente_id = :cliente_id 
+                ORDER BY created_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([':cliente_id' => $cliente_id]);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
     }
 
     /**
