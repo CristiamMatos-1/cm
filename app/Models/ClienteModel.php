@@ -90,9 +90,11 @@ class ClienteModel extends Model {
     public function getNotesByCliente($cliente_id) {
         try {
             $stmt = $this->db->prepare("
-                SELECT * FROM notas 
-                WHERE cliente_id = :cliente_id 
-                ORDER BY created_at DESC
+                SELECT n.*, c.numero_contrato
+                FROM notas n
+                LEFT JOIN contracts c ON c.id = n.contrato_id
+                WHERE n.cliente_id = :cliente_id
+                ORDER BY n.created_at DESC
                 LIMIT 100
             ");
             $stmt->execute([':cliente_id' => $cliente_id]);

@@ -246,9 +246,13 @@
                                 <tr>
                                     <td class="px-6 py-4 text-sm text-gray-900">#<?= $ch['id'] ?></td>
                                     <td class="px-6 py-4 text-sm text-gray-900"><?= htmlspecialchars(substr($ch['titulo'] ?? '', 0, 40)) ?></td>
+                                    <?php
+                                        $prioridade = $ch['prioridade'] ?? ($ch['prioridade_atendimento'] ?? 'normal');
+                                        $priorityClass = $prioridade === 'alta' ? 'red' : ($prioridade === 'media' ? 'yellow' : 'green');
+                                    ?>
                                     <td class="px-6 py-4 text-sm">
-                                        <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-<?= $ch['prioridade'] == 'alta' ? 'red' : ($ch['prioridade'] == 'media' ? 'yellow' : 'green') ?>-100 text-<?= $ch['prioridade'] == 'alta' ? 'red' : ($ch['prioridade'] == 'media' ? 'yellow' : 'green') ?>-800">
-                                            <?= htmlspecialchars($ch['prioridade'] ?? 'normal') ?>
+                                        <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-<?= $priorityClass ?>-100 text-<?= $priorityClass ?>-800">
+                                            <?= htmlspecialchars($prioridade) ?>
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-sm"><?= htmlspecialchars($ch['status'] ?? 'aberto') ?></td>
@@ -303,9 +307,15 @@
                         <div class="border border-gray-200 rounded p-4 hover:border-indigo-300 transition-colors">
                             <div class="flex justify-between items-start mb-2">
                                 <h4 class="font-bold text-gray-800"><?= htmlspecialchars($n['titulo'] ?? 'Nota #' . $n['id']) ?></h4>
+                                <?php if (!empty($n['tipo'])): ?>
+                                    <span class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600"><?= htmlspecialchars($n['tipo']) ?></span>
+                                <?php endif; ?>
                                 <span class="text-xs text-gray-500"><?= date('d/m/Y', strtotime($n['created_at'] ?? 'now')) ?></span>
                             </div>
-                            <p class="text-gray-600 text-sm line-clamp-3"><?= htmlspecialchars($n['conteudo'] ?? $n['descricao'] ?? '') ?></p>
+                            <p class="text-gray-600 text-sm whitespace-pre-wrap"><?= htmlspecialchars($n['conteudo'] ?? $n['descricao'] ?? '') ?></p>
+                            <?php if (!empty($n['arquivo_url'])): ?>
+                                <a href="<?= htmlspecialchars($n['arquivo_url']) ?>" target="_blank" class="inline-block mt-2 text-indigo-600 hover:underline text-sm">Abrir arquivo</a>
+                            <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
                     </div>
