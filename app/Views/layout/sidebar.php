@@ -94,6 +94,9 @@ $userType = $_SESSION['user_type'] ?? 'cliente';
             <a href="<?= BASE_URL ?>/admin/clientes" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white">
                 <i class="fas fa-users mr-2 w-5 text-center"></i> Clientes
             </a>
+            <a href="<?= BASE_URL ?>/admin/fornecedores" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white">
+                <i class="fas fa-truck mr-2 w-5 text-center"></i> Fornecedores
+            </a>
             <a href="<?= BASE_URL ?>/admin/projetos" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-corpBlue-700 hover:text-white">
                 <i class="fas fa-project-diagram mr-2 w-5 text-center"></i> Eng. de Software
             </a>

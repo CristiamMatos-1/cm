@@ -12,6 +12,7 @@ use app\Models\AvulsoServiceModel;
 use app\Models\ReportModel;
 use app\Models\ContabilModel;
 use app\Models\ProjetoModel;
+use app\Models\SupplierModel;
 use app\Helpers\Security;
 use app\Helpers\UploadHelper;
 
@@ -212,6 +213,7 @@ class AdminController extends Controller {
             'nome' => Security::sanitizeInput($_POST['nome'] ?? ''),
             'email' => Security::sanitizeInput($_POST['email'] ?? ''),
             'telefone' => Security::sanitizeInput($_POST['telefone'] ?? ''),
+            'whatsapp' => Security::sanitizeInput($_POST['whatsapp'] ?? ''),
             'cep' => Security::sanitizeInput($_POST['cep'] ?? ''),
             'logradouro' => Security::sanitizeInput($_POST['logradouro'] ?? ''),
             'numero' => Security::sanitizeInput($_POST['numero'] ?? ''),
@@ -221,7 +223,12 @@ class AdminController extends Controller {
             'estado' => Security::sanitizeInput($_POST['estado'] ?? ''),
             'responsavel_nome' => Security::sanitizeInput($_POST['responsavel_nome'] ?? ''),
             'anotacoes_visivel' => $_POST['anotacoes_visivel'] ?? '',
-            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? ''
+            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? '',
+            'ie' => Security::sanitizeInput($_POST['ie'] ?? ''),
+            'im' => Security::sanitizeInput($_POST['im'] ?? ''),
+            'crt' => (int)($_POST['crt'] ?? 1),
+            'indicador_ie' => (int)($_POST['indicador_ie'] ?? 9),
+            'cnae_principal' => Security::sanitizeInput($_POST['cnae_principal'] ?? ''),
         ];
 
         $clienteModel = new ClienteModel();
@@ -251,6 +258,7 @@ class AdminController extends Controller {
             'nome' => Security::sanitizeInput($_POST['nome'] ?? ''),
             'email' => Security::sanitizeInput($_POST['email'] ?? ''),
             'telefone' => Security::sanitizeInput($_POST['telefone'] ?? ''),
+            'whatsapp' => Security::sanitizeInput($_POST['whatsapp'] ?? ''),
             'responsavel_nome' => Security::sanitizeInput($_POST['responsavel_nome'] ?? ''),
             'cep' => Security::sanitizeInput($_POST['cep'] ?? ''),
             'logradouro' => Security::sanitizeInput($_POST['logradouro'] ?? ''),
@@ -260,7 +268,12 @@ class AdminController extends Controller {
             'cidade' => Security::sanitizeInput($_POST['cidade'] ?? ''),
             'estado' => Security::sanitizeInput($_POST['estado'] ?? ''),
             'anotacoes_visivel' => $_POST['anotacoes_visivel'] ?? '',
-            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? ''
+            'anotacoes_interna' => $_POST['anotacoes_interna'] ?? '',
+            'ie' => Security::sanitizeInput($_POST['ie'] ?? ''),
+            'im' => Security::sanitizeInput($_POST['im'] ?? ''),
+            'crt' => (int)($_POST['crt'] ?? 1),
+            'indicador_ie' => (int)($_POST['indicador_ie'] ?? 9),
+            'cnae_principal' => Security::sanitizeInput($_POST['cnae_principal'] ?? ''),
         ];
 
         $userModel = new UserModel();
@@ -1208,5 +1221,68 @@ class AdminController extends Controller {
         $avulsoModel->deleteService($id);
         $_SESSION['success'] = 'Serviço avulso deletado com sucesso!';
         $this->redirect('/admin/servicosAvulsos');
+    }
+
+    // =====================================================================
+    // FORNECEDORES
+    // =====================================================================
+
+    public function fornecedores() {
+        $busca = $_GET['busca'] ?? '';
+        $supplierModel = new SupplierModel();
+        $fornecedores = $supplierModel->getAll($busca);
+        $this->view('admin/fornecedores_list', compact('fornecedores', 'busca'));
+    }
+
+    public function novoFornecedor() {
+        $this->view('admin/novo_fornecedor');
+    }
+
+    public function salvarFornecedor() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('/admin/fornecedores');
+            return;
+        }
+        $supplierModel = new SupplierModel();
+        $result = $supplierModel->create($_POST);
+        if ($result) {
+            $_SESSION['success'] = 'Fornecedor cadastrado com sucesso!';
+        } else {
+            $_SESSION['error'] = 'Erro ao cadastrar fornecedor. Tente novamente.';
+        }
+        $this->redirect('/admin/fornecedores');
+    }
+
+    public function editarFornecedor($id) {
+        $supplierModel = new SupplierModel();
+        $fornecedor = $supplierModel->getById($id);
+        if (!$fornecedor) {
+            $_SESSION['error'] = 'Fornecedor não encontrado.';
+            $this->redirect('/admin/fornecedores');
+            return;
+        }
+        $this->view('admin/editar_fornecedor', compact('fornecedor'));
+    }
+
+    public function salvarEdicaoFornecedor($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('/admin/fornecedores');
+            return;
+        }
+        $supplierModel = new SupplierModel();
+        $result = $supplierModel->update($id, $_POST);
+        if ($result) {
+            $_SESSION['success'] = 'Fornecedor atualizado com sucesso!';
+        } else {
+            $_SESSION['error'] = 'Erro ao atualizar fornecedor.';
+        }
+        $this->redirect('/admin/fornecedores');
+    }
+
+    public function excluirFornecedor($id) {
+        $supplierModel = new SupplierModel();
+        $supplierModel->delete($id);
+        $_SESSION['success'] = 'Fornecedor excluído com sucesso!';
+        $this->redirect('/admin/fornecedores');
     }
 }

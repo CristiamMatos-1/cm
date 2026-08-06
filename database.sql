@@ -167,3 +167,43 @@ CREATE TABLE avulso_services (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+-- ============================================================
+-- v2.1 - Módulo Fornecedores + Campos Fiscais em Clientes
+-- ============================================================
+
+-- Tabela de Fornecedores
+CREATE TABLE IF NOT EXISTS suppliers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    razao_social VARCHAR(200) NOT NULL,
+    nome_fantasia VARCHAR(200) DEFAULT NULL,
+    cnpj VARCHAR(18) DEFAULT NULL,
+    ie VARCHAR(30) DEFAULT NULL,
+    im VARCHAR(30) DEFAULT NULL,
+    email VARCHAR(150) DEFAULT NULL,
+    whatsapp VARCHAR(20) DEFAULT NULL,
+    telefone VARCHAR(20) DEFAULT NULL,
+    cep VARCHAR(9) DEFAULT NULL,
+    logradouro VARCHAR(200) DEFAULT NULL,
+    numero VARCHAR(10) DEFAULT NULL,
+    complemento VARCHAR(100) DEFAULT NULL,
+    bairro VARCHAR(100) DEFAULT NULL,
+    cidade VARCHAR(100) DEFAULT NULL,
+    uf CHAR(2) DEFAULT NULL,
+    codigo_ibge VARCHAR(10) DEFAULT NULL,
+    crt TINYINT DEFAULT 1 COMMENT '1=Simples, 2=Simples Excesso, 3=Lucro',
+    indicador_ie TINYINT DEFAULT 9 COMMENT '1=Contribuinte, 2=Isento, 9=Nao Contribuinte',
+    cnae_principal VARCHAR(10) DEFAULT NULL,
+    observacoes TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Novos campos fiscais e de contato na tabela users (clientes)
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(20) DEFAULT NULL AFTER telefone,
+    ADD COLUMN IF NOT EXISTS ie VARCHAR(30) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS im VARCHAR(30) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS crt TINYINT DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS indicador_ie TINYINT DEFAULT 9,
+    ADD COLUMN IF NOT EXISTS cnae_principal VARCHAR(10) DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS codigo_ibge VARCHAR(10) DEFAULT NULL;

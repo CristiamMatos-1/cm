@@ -35,13 +35,51 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefone/WhatsApp</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                    <input type="text" name="whatsapp" value="<?= htmlspecialchars($cliente['whatsapp'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="(XX) 9XXXX-XXXX">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
                     <input type="text" name="telefone" value="<?= htmlspecialchars($cliente['telefone'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
                 </div>
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nova Senha do Cliente (opcional)</label>
                     <input type="password" name="senha" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500" placeholder="Deixe em branco para manter a senha atual">
+                </div>
+            </div>
+
+            <hr class="my-6 border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Dados Fiscais</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Inscrição Estadual (IE)</label>
+                    <input type="text" name="ie" value="<?= htmlspecialchars($cliente['ie'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Inscrição Municipal (IM)</label>
+                    <input type="text" name="im" value="<?= htmlspecialchars($cliente['im'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">CNAE Principal</label>
+                    <input type="text" name="cnae_principal" value="<?= htmlspecialchars($cliente['cnae_principal'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Regime Tributário (CRT)</label>
+                    <select name="crt" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                        <option value="1" <?= ($cliente['crt'] ?? '1') == '1' ? 'selected' : '' ?>>1 – Simples Nacional</option>
+                        <option value="2" <?= ($cliente['crt'] ?? '') == '2' ? 'selected' : '' ?>>2 – Simples Nacional – Excesso</option>
+                        <option value="3" <?= ($cliente['crt'] ?? '') == '3' ? 'selected' : '' ?>>3 – Lucro Presumido / Real</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Indicador IE</label>
+                    <select name="indicador_ie" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-corpBlue-500">
+                        <option value="9" <?= ($cliente['indicador_ie'] ?? '9') == '9' ? 'selected' : '' ?>>9 – Não Contribuinte</option>
+                        <option value="1" <?= ($cliente['indicador_ie'] ?? '') == '1' ? 'selected' : '' ?>>1 – Contribuinte ICMS</option>
+                        <option value="2" <?= ($cliente['indicador_ie'] ?? '') == '2' ? 'selected' : '' ?>>2 – Contribuinte Isento</option>
+                    </select>
                 </div>
             </div>
 
