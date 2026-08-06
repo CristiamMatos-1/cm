@@ -185,16 +185,18 @@ function buscarCep(cep) {
 </script>
 
 <script>
-const attachMarkdownPreview = (textareaId, previewId) => {
+const clienteId = <?= (int)($cliente['id'] ?? 0) ?>;
+const attachMarkdownPreview = (textareaId) => {
     const textarea = document.getElementById(textareaId);
     if (!textarea) return;
-    const saveKey = `client-note-${textareaId}`;
-    const render = () => {
-        localStorage.setItem(saveKey, textarea.value);
-    };
-    textarea.value = localStorage.getItem(saveKey) ?? textarea.value;
-    textarea.addEventListener('input', render);
-    render();
+    // Chave única por cliente — não mistura dados entre clientes
+    const saveKey = `client-note-${clienteId}-${textareaId}`;
+    textarea.addEventListener('input', () => localStorage.setItem(saveKey, textarea.value));
+    // Só restaura do localStorage se o banco não tiver dados
+    if (!textarea.value.trim()) {
+        const saved = localStorage.getItem(saveKey);
+        if (saved) textarea.value = saved;
+    }
 };
 attachMarkdownPreview('anotacoes_visivel');
 attachMarkdownPreview('anotacoes_interna');

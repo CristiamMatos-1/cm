@@ -8,11 +8,11 @@ class SupplierModel extends Model {
 
     public function getAll($busca = '') {
         try {
-            $sql = "SELECT * FROM suppliers";
+            $sql = "SELECT *, COALESCE(razao_social, nome, '') AS razao_social FROM suppliers";
             if (!empty($busca)) {
-                $sql .= " WHERE razao_social LIKE :busca OR nome_fantasia LIKE :busca OR cnpj LIKE :busca";
+                $sql .= " WHERE razao_social LIKE :busca OR nome LIKE :busca OR nome_fantasia LIKE :busca OR cnpj LIKE :busca";
             }
-            $sql .= " ORDER BY razao_social ASC";
+            $sql .= " ORDER BY COALESCE(razao_social, nome) ASC";
             $stmt = $this->db->prepare($sql);
             if (!empty($busca)) {
                 $like = "%{$busca}%";

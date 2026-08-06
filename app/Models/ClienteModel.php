@@ -34,6 +34,7 @@ class ClienteModel extends Model {
                     nome = :nome,
                     email = :email,
                     telefone = :telefone,
+                    whatsapp = :whatsapp,
                     responsavel_nome = :responsavel_nome,
                     cep = :cep,
                     logradouro = :logradouro,
@@ -43,7 +44,12 @@ class ClienteModel extends Model {
                     cidade = :cidade,
                     estado = :estado,
                     anotacoes_visivel = :anotacoes_visivel,
-                    anotacoes_interna = :anotacoes_interna
+                    anotacoes_interna = :anotacoes_interna,
+                    ie = :ie,
+                    im = :im,
+                    crt = :crt,
+                    indicador_ie = :indicador_ie,
+                    cnae_principal = :cnae_principal
                 WHERE id = :id AND perfil = 'cliente'
             ";
 
@@ -53,6 +59,7 @@ class ClienteModel extends Model {
                 ':nome' => $data['nome'] ?? null,
                 ':email' => $data['email'] ?? null,
                 ':telefone' => $data['telefone'] ?? null,
+                ':whatsapp' => $data['whatsapp'] ?? null,
                 ':responsavel_nome' => $data['responsavel_nome'] ?? null,
                 ':cep' => $data['cep'] ?? null,
                 ':logradouro' => $data['logradouro'] ?? null,
@@ -63,6 +70,11 @@ class ClienteModel extends Model {
                 ':estado' => $data['estado'] ?? null,
                 ':anotacoes_visivel' => $data['anotacoes_visivel'] ?? null,
                 ':anotacoes_interna' => $data['anotacoes_interna'] ?? null,
+                ':ie' => $data['ie'] ?? null,
+                ':im' => $data['im'] ?? null,
+                ':crt' => $data['crt'] ?? 1,
+                ':indicador_ie' => $data['indicador_ie'] ?? 9,
+                ':cnae_principal' => $data['cnae_principal'] ?? null,
                 ':id' => $id
             ]);
         } catch (Exception $e) {

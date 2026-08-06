@@ -172,18 +172,43 @@ class UserModel extends Model {
     public function createUser($data) {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO users (nome, cpf_cnpj, email, telefone, senha, perfil) 
-                VALUES (:nome, :cpf_cnpj, :email, :telefone, :senha, 'cliente')
+                INSERT INTO users (nome, cpf_cnpj, email, telefone, whatsapp, responsavel_nome,
+                    cep, logradouro, numero, complemento, bairro, cidade, estado,
+                    anotacoes_visivel, anotacoes_interna,
+                    ie, im, crt, indicador_ie, cnae_principal,
+                    senha, perfil)
+                VALUES (:nome, :cpf_cnpj, :email, :telefone, :whatsapp, :responsavel_nome,
+                    :cep, :logradouro, :numero, :complemento, :bairro, :cidade, :estado,
+                    :anotacoes_visivel, :anotacoes_interna,
+                    :ie, :im, :crt, :indicador_ie, :cnae_principal,
+                    :senha, 'cliente')
             ");
             
-            $stmt->bindParam(':nome', $data['nome']);
-            $stmt->bindParam(':cpf_cnpj', $data['cpf_cnpj']);
-            $stmt->bindParam(':email', $data['email']);
-            $stmt->bindParam(':telefone', $data['telefone']);
-            $stmt->bindParam(':senha', $data['senha_hash']);
-            
-            return $stmt->execute();
+            return $stmt->execute([
+                ':nome'              => $data['nome'] ?? '',
+                ':cpf_cnpj'         => $data['cpf_cnpj'] ?? '',
+                ':email'             => $data['email'] ?? '',
+                ':telefone'          => $data['telefone'] ?? '',
+                ':whatsapp'          => $data['whatsapp'] ?? '',
+                ':responsavel_nome'  => $data['responsavel_nome'] ?? '',
+                ':cep'               => $data['cep'] ?? '',
+                ':logradouro'        => $data['logradouro'] ?? '',
+                ':numero'            => $data['numero'] ?? '',
+                ':complemento'       => $data['complemento'] ?? '',
+                ':bairro'            => $data['bairro'] ?? '',
+                ':cidade'            => $data['cidade'] ?? '',
+                ':estado'            => $data['estado'] ?? '',
+                ':anotacoes_visivel' => $data['anotacoes_visivel'] ?? '',
+                ':anotacoes_interna' => $data['anotacoes_interna'] ?? '',
+                ':ie'                => $data['ie'] ?? '',
+                ':im'                => $data['im'] ?? '',
+                ':crt'               => $data['crt'] ?? 1,
+                ':indicador_ie'      => $data['indicador_ie'] ?? 9,
+                ':cnae_principal'    => $data['cnae_principal'] ?? '',
+                ':senha'             => $data['senha'] ?? '',
+            ]);
         } catch (Exception $e) {
+            error_log('UserModel::createUser - ' . $e->getMessage());
             return false;
         }
     }

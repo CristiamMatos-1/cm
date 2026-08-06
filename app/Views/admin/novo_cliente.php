@@ -198,13 +198,20 @@ function buscarCep(cep) {
     }
 }
 
+// Rascunho de novo cliente — chave única por sessão de cadastro, limpa ao salvar
+if (!sessionStorage.getItem('novo-cliente-draft-id')) {
+    sessionStorage.setItem('novo-cliente-draft-id', Date.now());
+    localStorage.removeItem('novo-cliente-anotacoes_visivel');
+    localStorage.removeItem('novo-cliente-anotacoes_interna');
+}
+const draftId = sessionStorage.getItem('novo-cliente-draft-id');
 const attachDraft = (textareaId) => {
     const textarea = document.getElementById(textareaId);
     if (!textarea) return;
-    const key = `client-note-${textareaId}`;
-    textarea.value = localStorage.getItem(key) ?? textarea.value;
+    const key = `novo-cliente-${draftId}-${textareaId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) textarea.value = saved;
     textarea.addEventListener('input', () => localStorage.setItem(key, textarea.value));
-    localStorage.setItem(key, textarea.value);
 };
 attachDraft('anotacoes_visivel');
 attachDraft('anotacoes_interna');
