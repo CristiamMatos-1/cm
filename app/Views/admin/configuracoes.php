@@ -48,7 +48,7 @@
             <h3 class="font-bold text-gray-800"><i class="fas fa-truck mr-2 text-green-500"></i> Cadastrar Fornecedor</h3>
         </div>
         <div class="p-6">
-            <form action="<?= BASE_URL ?>/admin/salvarFornecedor" method="POST">
+            <form action="<?= BASE_URL ?>/admin/salvarFornecedorConfig" method="POST">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
                 
                 <div class="grid grid-cols-2 gap-4 mb-4">

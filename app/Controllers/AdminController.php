@@ -993,7 +993,7 @@ class AdminController extends Controller {
         $this->redirect('/admin/empresa');
     }
 
-    public function salvarFornecedor() {
+    public function salvarFornecedorConfig() {
         $this->requirePost();
         
         $dados = [
