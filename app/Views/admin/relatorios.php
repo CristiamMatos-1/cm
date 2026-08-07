@@ -82,7 +82,7 @@
                         <td class="px-4 py-3 text-gray-500 font-mono">#<?= $s['id'] ?></td>
                         <td class="px-4 py-3">
                             <div class="font-bold text-gray-800"><?= htmlspecialchars($s['cliente_nome']) ?></div>
-                            <div class="text-xs text-gray-500"><?= htmlspecialchars($s['tipo_servico']) ?> (<?= ucfirst($s['atendimento']) ?>)</div>
+                            <div class="text-xs text-gray-500"><?= htmlspecialchars($s['tipo_servico'] ?? '') ?> (<?= ucfirst($s['atendimento'] ?? '') ?>)</div>
                         </td>
                         <td class="px-4 py-3 text-gray-700"><?= htmlspecialchars($s['tecnico_nome'] ?? 'Admin') ?></td>
                         <td class="px-4 py-3 text-center font-bold text-indigo-600 bg-indigo-50 rounded"><?= $tempoFormatado ?></td>
