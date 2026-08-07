@@ -232,7 +232,13 @@ class AdminController extends Controller {
         ];
 
         $clienteModel = new ClienteModel();
-        $clienteModel->updateCliente($id, $dados);
+        try {
+            $clienteModel->updateCliente($id, $dados);
+        } catch (\Exception $e) {
+            $_SESSION['error'] = 'Erro ao salvar: ' . $e->getMessage();
+            $this->redirect('/admin/editarCliente/' . $id);
+            return;
+        }
 
         $novaSenha = $_POST['senha'] ?? '';
         if (!empty($novaSenha)) {
@@ -240,6 +246,7 @@ class AdminController extends Controller {
             $userModel->updateClientPassword($id, password_hash($novaSenha, PASSWORD_BCRYPT, ['cost' => 12]));
         }
 
+        $_SESSION['success'] = 'Cliente atualizado com sucesso!';
         $this->redirect('/admin/clientes');
     }
 

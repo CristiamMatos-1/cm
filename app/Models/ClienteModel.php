@@ -78,8 +78,8 @@ class ClienteModel extends Model {
                 ':id' => $id
             ]);
         } catch (Exception $e) {
-            error_log("Erro ao atualizar cliente: " . $e->getMessage());
-            return false;
+            error_log("Erro ao atualizar cliente ID {$id}: " . $e->getMessage());
+            throw $e; // repassa para o controller mostrar o erro
         }
     }
 

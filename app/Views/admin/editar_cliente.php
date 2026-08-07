@@ -8,6 +8,20 @@
         </a>
     </div>
 
+    <?php if (isset($_SESSION['error'])): ?>
+    <div class="mb-4 bg-red-50 border border-red-300 text-red-800 rounded-lg px-4 py-3">
+        <i class="fas fa-exclamation-circle mr-1"></i>
+        <?= htmlspecialchars($_SESSION['error']) ?>
+    </div>
+    <?php unset($_SESSION['error']); endif; ?>
+
+    <?php if (isset($_SESSION['success'])): ?>
+    <div class="mb-4 bg-green-50 border border-green-300 text-green-800 rounded-lg px-4 py-3">
+        <i class="fas fa-check-circle mr-1"></i>
+        <?= htmlspecialchars($_SESSION['success']) ?>
+    </div>
+    <?php unset($_SESSION['success']); endif; ?>
+
     <div class="bg-white rounded-lg shadow-sm p-6">
         <form action="<?= BASE_URL ?>/admin/salvarEdicaoCliente/<?= $cliente['id'] ?>" method="POST">
             <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
