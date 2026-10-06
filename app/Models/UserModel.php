@@ -186,15 +186,13 @@ class UserModel extends Model {
             $stmt->bindParam(':perfil', $data['perfil']);
             $stmt->bindParam(':permissoes', $data['permissoes']);
             
-            if (!$stmt->execute()) {
-                $error = $stmt->errorInfo();
-                die("Erro no SQL: " . print_r($error, true));
-            }
-            return true;
+            return $stmt->execute();
         } catch (\PDOException $e) {
-            die("Erro PDO: " . $e->getMessage());
+            error_log("Erro ao criar usuário: " . $e->getMessage());
+            return false;
         } catch (Exception $e) {
-            die("Erro Genérico: " . $e->getMessage());
+            error_log("Erro ao criar usuário: " . $e->getMessage());
+            return false;
         }
     }
 

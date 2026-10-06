@@ -11,8 +11,9 @@ class ClientController extends Controller {
 
     public function __construct() {
         // Verifica se o usuário está logado e se é cliente
-        if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'cliente') {
+        if (!isset($_SESSION['user_id']) || ($_SESSION['user_type'] ?? '') !== 'cliente') {
             $this->redirect('/auth');
+            exit;
         }
     }
 
@@ -22,6 +23,7 @@ class ClientController extends Controller {
 
     public function orcamentos() {
         $orcamentoModel = new \app\Models\OrcamentoModel();
+        $orcamentoModel->checkExpiredBudgets();
         
         $this->view('client/orcamentos_list', [
             'title' => 'Meus Orçamentos',
@@ -34,24 +36,29 @@ class ClientController extends Controller {
         $this->requirePost();
         
         $acao = $_POST['acao'] ?? '';
-        $status = ($acao === 'aprovar') ? 'aprovado' : 'rejeitado';
-
         $orcamentoModel = new \app\Models\OrcamentoModel();
-        
-        // Verifica se o orçamento realmente pertence a este cliente
-        $orcamento = null;
-        $lista = $orcamentoModel->getBudgetsByClient($_SESSION['user_id']);
-        foreach ($lista as $item) {
-            if ($item['id'] == $id) {
-                $orcamento = $item;
-                break;
+
+        if (!in_array($acao, [\app\Models\OrcamentoModel::DECISION_APPROVE, \app\Models\OrcamentoModel::DECISION_REJECT], true)) {
+            $resultado = ['ok' => false, 'code' => 'invalid', 'message' => 'Ação inválida para o orçamento.', 'budget' => null];
+        } else {
+            // O orçamento precisa pertencer ao cliente logado (evita IDOR).
+            $orcamento = $orcamentoModel->getBudgetById($id);
+
+            if (!$orcamento || (int)$orcamento['cliente_id'] !== (int)$_SESSION['user_id']) {
+                $resultado = ['ok' => false, 'code' => 'not_found', 'message' => 'Orçamento não encontrado.', 'budget' => null];
+            } else {
+                $motivo = $acao === \app\Models\OrcamentoModel::DECISION_REJECT
+                    ? Security::sanitizeInput($_POST['motivo'] ?? '')
+                    : null;
+                $resultado = $orcamentoModel->decide($id, $acao, $_SESSION['user_id'], $motivo);
             }
         }
 
-        if ($orcamento && $orcamento['status'] === 'pendente') {
-            $orcamentoModel->updateStatus($id, $status);
+        if ($this->isAjax()) {
+            $this->respondBudgetDecision($resultado);
         }
 
+        $this->flashBudgetDecision($resultado);
         $this->redirect('/client/orcamentos');
     }
 

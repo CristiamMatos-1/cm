@@ -16,6 +16,16 @@ use app\Helpers\UploadHelper;
 
 class AdminController extends Controller {
 
+    private const PERFIS_FUNCIONARIO = ['admin', 'tecnico'];
+    private const PERMISSOES_VALIDAS = ['abrir_chamado_admin', 'criar_orcamento', 'acesso_financeiro', 'gerar_relatorios'];
+
+    private function sanitizePermissoes($permissoes) {
+        if (!is_array($permissoes)) {
+            return json_encode([]);
+        }
+        return json_encode(array_values(array_intersect(self::PERMISSOES_VALIDAS, $permissoes)));
+    }
+
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
             $this->redirect('/auth');
@@ -27,34 +37,34 @@ class AdminController extends Controller {
             exit;
         }
 
-        // Se for técnico, só permite acesso às rotas financeiras SE tiver a permissão "acesso_financeiro"
+        // Técnicos só acessam rotas administrativas liberadas pelas suas permissões granulares.
         if ($_SESSION['user_type'] === 'tecnico') {
-            $url = isset($_GET['url']) ? filter_var(rtrim($_GET['url'], '/'), FILTER_SANITIZE_URL) : '';
-            
+            $url = isset($_GET['url']) ? trim((string)$_GET['url'], '/') : '';
+            $parts = explode('/', strtolower($url));
+            $action = $parts[1] ?? 'index';
+
             $userModel = new UserModel();
             $user = $userModel->getUserById($_SESSION['user_id']);
             $perms = json_decode($user['permissoes'] ?? '[]', true) ?: [];
 
+            $routesByPermission = [
+                'acesso_financeiro' => ['contabil', 'novolancamentocontabil', 'alterarstatuslancamento'],
+                'criar_orcamento' => [
+                    'orcamentos', 'novoorcamento', 'salvarorcamento', 'editarorcamento', 'salvaredicaoorcamento',
+                    'aprovarorcamento', 'rejeitarorcamento', 'reativarorcamento',
+                    'adicionaritemorcamento', 'removeritemorcamento',
+                    'imprimirorcamento', 'imprimirorcamentonovo', 'enviaremailorcamento', 'enviarwhatsapporcamento'
+                ],
+                'gerar_relatorios' => ['relatorios'],
+                'abrir_chamado_admin' => ['chamados', 'editarchamado', 'salvaredicaochamado', 'imprimirchamado', 'enviaremailchamado'],
+            ];
+
             $permitido = false;
-
-            // Módulo Financeiro
-            if (strpos($url, 'admin/contabil') === 0 || strpos($url, 'admin/novoLancamentoContabil') === 0 || strpos($url, 'admin/alterarStatusLancamento') === 0) {
-                if (in_array('acesso_financeiro', $perms)) $permitido = true;
-            }
-            
-            // Módulo Orçamentos
-            elseif (strpos($url, 'admin/orcamentos') === 0 || strpos($url, 'admin/novoOrcamento') === 0 || strpos($url, 'admin/editarOrcamento') === 0) {
-                if (in_array('criar_orcamento', $perms)) $permitido = true;
-            }
-
-            // Módulo Relatórios
-            elseif (strpos($url, 'admin/relatorios') === 0) {
-                if (in_array('gerar_relatorios', $perms)) $permitido = true;
-            }
-
-            // Módulo Chamados
-            elseif (strpos($url, 'admin/chamados') === 0 || strpos($url, 'admin/editarChamado') === 0) {
-                if (in_array('abrir_chamado_admin', $perms)) $permitido = true;
+            foreach ($routesByPermission as $perm => $actions) {
+                if (in_array($perm, $perms, true) && in_array($action, $actions, true)) {
+                    $permitido = true;
+                    break;
+                }
             }
 
             if (!$permitido) {
@@ -69,7 +79,8 @@ class AdminController extends Controller {
         
         $this->view('admin/chamados_list', [
             'title' => 'Todos os Chamados',
-            'chamados' => $chamadoModel->getAllChamados()
+            'chamados' => $chamadoModel->getAllChamados(),
+            'csrf_token' => Security::generateCsrfToken()
         ]);
     }
 
@@ -101,9 +112,9 @@ class AdminController extends Controller {
             'engenheiro_id' => !empty($_POST['engenheiro_id']) ? $_POST['engenheiro_id'] : null,
             'status' => $_POST['status'] ?? 'aberto',
             'relatorio_final' => Security::sanitizeInput($_POST['relatorio_final'] ?? ''),
-            'valor_pecas' => str_replace(',', '.', $_POST['valor_pecas'] ?? '0'),
-            'valor_mao_obra' => str_replace(',', '.', $_POST['valor_mao_obra'] ?? '0'),
-            'valor_servico' => str_replace(',', '.', $_POST['valor_servico'] ?? '0'),
+            'valor_pecas' => Security::parseMoney($_POST['valor_pecas'] ?? '0'),
+            'valor_mao_obra' => Security::parseMoney($_POST['valor_mao_obra'] ?? '0'),
+            'valor_servico' => Security::parseMoney($_POST['valor_servico'] ?? '0'),
             'forma_pagamento' => !empty($_POST['forma_pagamento']) ? $_POST['forma_pagamento'] : null,
             'autorizado_por' => !empty($_POST['autorizado_por']) ? $_POST['autorizado_por'] : null
         ];
@@ -123,6 +134,7 @@ class AdminController extends Controller {
         $chamado = $chamadoModel->getById($id);
 
         if (!$chamado) {
+            http_response_code(404);
             die("Chamado não encontrado.");
         }
 
@@ -131,24 +143,32 @@ class AdminController extends Controller {
     }
 
     public function enviarEmailChamado($id) {
+        $this->requirePost();
+
         $chamadoModel = new ChamadoModel();
         $chamado = $chamadoModel->getById($id);
 
         if ($chamado && !empty($chamado['cliente_email'])) {
-            $link = "http://" . $_SERVER['HTTP_HOST'] . BASE_URL . "/admin/imprimirChamado/" . $id;
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $link = $scheme . "://" . $_SERVER['HTTP_HOST'] . BASE_URL . "/client/verChamado/" . (int)$id;
             $mensagem = "<p>Um novo serviço/chamado foi registrado e atualizado para você.</p>";
-            $mensagem .= "<p>Você pode visualizar a Ordem de Serviço, o Escopo, Valores e <strong>Autorizar a Execução</strong> acessando o link abaixo:</p>";
-            $mensagem .= "<p><a href='{$link}' style='display:inline-block; padding:10px 20px; background-color:#1e3a8a; color:#fff; text-decoration:none; border-radius:5px;'>Visualizar e Autorizar Serviço</a></p>";
+            $mensagem .= "<p>Você pode visualizar o Escopo, Valores e <strong>Autorizar a Execução</strong> acessando o link abaixo:</p>";
+            $mensagem .= "<p><a href='" . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block; padding:10px 20px; background-color:#1e3a8a; color:#fff; text-decoration:none; border-radius:5px;'>Visualizar e Autorizar Serviço</a></p>";
             
-            \app\Helpers\MailHelper::enviarEmail($chamado['cliente_email'], $chamado['cliente_nome'], "Acompanhamento de Serviço #" . $id, $mensagem);
+            $enviado = \app\Helpers\MailHelper::enviarEmail($chamado['cliente_email'], $chamado['cliente_nome'], "Acompanhamento de Serviço #" . (int)$id, $mensagem);
+            $this->flash($enviado ? 'success' : 'error', $enviado ? 'E-mail enviado ao cliente.' : 'Não foi possível enviar o e-mail.');
+        } else {
+            $this->flash('error', 'Chamado não encontrado ou cliente sem e-mail.');
         }
 
-        $this->redirect('/admin/editarChamado/' . $id);
+        $this->redirect('/admin/editarChamado/' . (int)$id);
     }
 
     public function excluirChamado($id) {
+        $this->requirePost();
         $chamadoModel = new ChamadoModel();
         $chamadoModel->deleteTicket($id);
+        $this->flash('success', 'Chamado excluído com sucesso.');
         $this->redirect('/admin/chamados');
     }
 
@@ -201,13 +221,16 @@ class AdminController extends Controller {
     }
 
     public function excluirUsuario($id) {
-        // Não permite excluir a si mesmo
+        $this->requirePost();
+
         if ($id == $_SESSION['user_id']) {
-            die("ERRO: Você não pode excluir a si mesmo.");
+            $this->flash('error', 'Você não pode excluir a si mesmo.');
+            $this->redirect('/admin/usuarios');
         }
 
         $userModel = new UserModel();
         $userModel->deleteUser($id);
+        $this->flash('success', 'Usuário excluído com sucesso.');
 
         $this->redirect('/admin/usuarios');
     }
@@ -232,9 +255,13 @@ class AdminController extends Controller {
 
     public function orcamentos() {
         $orcamentoModel = new OrcamentoModel();
+        $orcamentoModel->checkExpiredBudgets();
+
         $this->view('admin/orcamentos_list', [
             'title' => 'Gestão de Orçamentos',
-            'orcamentos' => $orcamentoModel->getAllBudgets()
+            'orcamentos' => $orcamentoModel->getAllBudgets(),
+            'csrf_token' => Security::generateCsrfToken(),
+            'podeExcluir' => $_SESSION['user_type'] === 'admin'
         ]);
     }
 
@@ -245,34 +272,74 @@ class AdminController extends Controller {
         $this->view('admin/novo_orcamento', [
             'title' => 'Criar Novo Orçamento',
             'clientes' => $userModel->getAllClients(),
-            'chamados_abertos' => $chamadoModel->getAllChamados(), // Passa a lista para o select opcional
+            'chamados_abertos' => $chamadoModel->getAllChamados(),
             'csrf_token' => Security::generateCsrfToken()
         ]);
+    }
+
+    private function parseValidade($value) {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return null;
+        }
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+        return ($date && $date->format('Y-m-d') === $value) ? $value : null;
     }
 
     public function salvarOrcamento() {
         $this->requirePost();
 
-        $valor_pecas = (float)str_replace(',', '.', $_POST['valor_pecas'] ?? '0');
-        $valor_mao_obra = (float)str_replace(',', '.', $_POST['valor_mao_obra'] ?? '0');
-        $valor_total = $valor_pecas + $valor_mao_obra;
+        $valor_pecas = Security::parseMoney($_POST['valor_pecas'] ?? '0');
+        $valor_mao_obra = Security::parseMoney($_POST['valor_mao_obra'] ?? '0');
 
         $dados = [
-            'cliente_id' => $_POST['cliente_id'] ?? null,
-            'ticket_id' => !empty($_POST['ticket_id']) ? $_POST['ticket_id'] : null,
+            'cliente_id' => (int)($_POST['cliente_id'] ?? 0),
+            'ticket_id' => !empty($_POST['ticket_id']) ? (int)$_POST['ticket_id'] : null,
             'titulo' => Security::sanitizeInput($_POST['titulo'] ?? ''),
             'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
             'valor_pecas' => $valor_pecas,
             'valor_mao_obra' => $valor_mao_obra,
-            'valor' => $valor_total
+            'valor_total' => $valor_pecas + $valor_mao_obra,
+            'data_validade' => $this->parseValidade($_POST['data_validade'] ?? '')
         ];
 
-        if ($dados['cliente_id'] && $dados['titulo']) {
-            $orcamentoModel = new OrcamentoModel();
-            $orcamentoModel->createBudget($dados);
+        if ($dados['cliente_id'] <= 0 || $dados['titulo'] === '' || $dados['descricao'] === '') {
+            $this->flash('error', 'Preencha cliente, título e descrição para gerar o orçamento.');
+            $this->redirect('/admin/novoOrcamento');
         }
 
-        $this->redirect('/admin/orcamentos');
+        if ($dados['valor_pecas'] < 0 || $dados['valor_mao_obra'] < 0) {
+            $this->flash('error', 'Os valores do orçamento não podem ser negativos.');
+            $this->redirect('/admin/novoOrcamento');
+        }
+
+        if ($dados['data_validade'] !== null && $dados['data_validade'] < date('Y-m-d')) {
+            $this->flash('error', 'A data de validade não pode estar no passado.');
+            $this->redirect('/admin/novoOrcamento');
+        }
+
+        $userModel = new UserModel();
+        $cliente = $userModel->getUserById($dados['cliente_id']);
+        if (!$cliente || $cliente['perfil'] !== 'cliente') {
+            $this->flash('error', 'Cliente inválido.');
+            $this->redirect('/admin/novoOrcamento');
+        }
+
+        try {
+            $orcamentoModel = new OrcamentoModel();
+            $id = $orcamentoModel->createBudget($dados);
+        } catch (\Throwable $e) {
+            error_log('Erro ao criar orçamento: ' . $e->getMessage());
+            $id = false;
+        }
+
+        if ($id) {
+            $this->flash('success', 'Orçamento #' . $id . ' criado com sucesso.');
+            $this->redirect('/admin/editarOrcamento/' . $id);
+        }
+
+        $this->flash('error', 'Não foi possível criar o orçamento. Tente novamente.');
+        $this->redirect('/admin/novoOrcamento');
     }
 
     public function editarOrcamento($id) {
@@ -282,96 +349,178 @@ class AdminController extends Controller {
         $orcamento = $orcamentoModel->getBudgetById($id);
         
         if (!$orcamento) {
+            $this->flash('error', 'Orçamento não encontrado.');
             $this->redirect('/admin/orcamentos');
             return;
         }
 
         $this->view('admin/editar_orcamento', [
-            'title' => 'Editar Orçamento #' . $id,
+            'title' => 'Orçamento #' . (int)$id,
             'orcamento' => $orcamento,
+            'itens' => $orcamentoModel->getBudgetItems($id),
+            'editavel' => $orcamentoModel->isEditable($orcamento),
             'chamados_abertos' => $chamadoModel->getAllChamados(),
-            'csrf_token' => Security::generateCsrfToken()
+            'csrf_token' => Security::generateCsrfToken(),
+            'podeExcluir' => $_SESSION['user_type'] === 'admin'
         ]);
     }
 
     public function salvarEdicaoOrcamento($id) {
         $this->requirePost();
 
-        $valor_pecas = (float)str_replace(',', '.', $_POST['valor_pecas'] ?? '0');
-        $valor_mao_obra = (float)str_replace(',', '.', $_POST['valor_mao_obra'] ?? '0');
-        $valor_total = $valor_pecas + $valor_mao_obra;
-
-        $dados = [
-            'titulo' => Security::sanitizeInput($_POST['titulo'] ?? ''),
-            'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
-            'valor_pecas' => $valor_pecas,
-            'valor_mao_obra' => $valor_mao_obra,
-            'valor' => $valor_total,
-            'status' => $_POST['status'] ?? 'pendente',
-            'ticket_id' => !empty($_POST['ticket_id']) ? $_POST['ticket_id'] : null,
-            'autorizado_por' => !empty($_POST['autorizado_por']) ? $_POST['autorizado_por'] : null
-        ];
-
-        $orcamentoModel = new OrcamentoModel();
-        
-        // Se mudou para um status de aprovação, registra a data de autorização
-        if (!empty($dados['autorizado_por']) && $dados['status'] !== 'pendente' && $dados['status'] !== 'rejeitado') {
-            $dados['data_autorizacao'] = date('Y-m-d H:i:s');
-        }
-
-        $orcamentoModel->updateBudget($id, $dados);
-
-        $this->redirect('/admin/orcamentos');
-    }
-
-    public function imprimirOrcamento($id) {
         $orcamentoModel = new OrcamentoModel();
         $orcamento = $orcamentoModel->getBudgetById($id);
 
         if (!$orcamento) {
-            die("Orçamento não encontrado.");
+            $this->flash('error', 'Orçamento não encontrado.');
+            $this->redirect('/admin/orcamentos');
         }
 
-        // Não carrega header/footer padrão, carrega a view de impressão limpa
-        require_once APP_PATH . '/Views/admin/imprimir_orcamento.php';
+        if (!$orcamentoModel->isEditable($orcamento)) {
+            $this->flash('warning', 'Este orçamento já foi ' . $orcamento['status'] . ' e não pode mais ser alterado.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
+        }
+
+        $dados = [
+            'titulo' => Security::sanitizeInput($_POST['titulo'] ?? ''),
+            'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
+            'ticket_id' => !empty($_POST['ticket_id']) ? (int)$_POST['ticket_id'] : null,
+            'data_validade' => $this->parseValidade($_POST['data_validade'] ?? '')
+        ];
+
+        if ($dados['titulo'] === '' || $dados['descricao'] === '') {
+            $this->flash('error', 'Título e descrição são obrigatórios.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
+        }
+
+        if ($dados['data_validade'] !== null && $dados['data_validade'] < date('Y-m-d')) {
+            $this->flash('error', 'A data de validade não pode estar no passado.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
+        }
+
+        // Com itens detalhados, os totais são sempre derivados dos itens.
+        if (count($orcamentoModel->getBudgetItems($id)) === 0) {
+            $valor_pecas = Security::parseMoney($_POST['valor_pecas'] ?? '0');
+            $valor_mao_obra = Security::parseMoney($_POST['valor_mao_obra'] ?? '0');
+
+            if ($valor_pecas < 0 || $valor_mao_obra < 0) {
+                $this->flash('error', 'Os valores do orçamento não podem ser negativos.');
+                $this->redirect('/admin/editarOrcamento/' . (int)$id);
+            }
+
+            $dados['valor_pecas'] = $valor_pecas;
+            $dados['valor_mao_obra'] = $valor_mao_obra;
+            $dados['valor_total'] = $valor_pecas + $valor_mao_obra;
+        }
+
+        try {
+            $orcamentoModel->updateBudget($id, $dados);
+            $this->flash('success', 'Orçamento atualizado com sucesso.');
+        } catch (\Throwable $e) {
+            error_log('Erro ao atualizar orçamento #' . (int)$id . ': ' . $e->getMessage());
+            $this->flash('error', 'Não foi possível salvar as alterações.');
+        }
+
+        $this->redirect('/admin/editarOrcamento/' . (int)$id);
+    }
+
+    public function imprimirOrcamento($id) {
+        return $this->imprimirOrcamentoNovo($id);
     }
 
     public function enviarEmailOrcamento($id) {
+        $this->requirePost();
+
         $orcamentoModel = new OrcamentoModel();
-        $userModel = new UserModel();
-        
         $orcamento = $orcamentoModel->getBudgetById($id);
-        
-        if ($orcamento) {
-            $cliente = $userModel->getUserById($orcamento['cliente_id']);
-            
-            if ($cliente && !empty($cliente['email'])) {
-                $link = "http://" . $_SERVER['HTTP_HOST'] . BASE_URL . "/admin/imprimirOrcamento/" . $id;
-                $mensagem = "<p>Uma nova proposta comercial / orçamento foi registrada para você.</p>";
-                $mensagem .= "<p>Você pode visualizar o Escopo, Valores e <strong>Autorizar a Execução</strong> acessando o link abaixo:</p>";
-                $mensagem .= "<p><a href='{$link}' style='display:inline-block; padding:10px 20px; background-color:#1e3a8a; color:#fff; text-decoration:none; border-radius:5px;'>Visualizar e Aprovar Orçamento</a></p>";
-                
-                \app\Helpers\MailHelper::enviarEmail($cliente['email'], $cliente['nome'], "Proposta Comercial / Orçamento #" . $id, $mensagem);
-            }
+
+        if (!$orcamento) {
+            $this->flash('error', 'Orçamento não encontrado.');
+            $this->redirect('/admin/orcamentos');
         }
 
-        $this->redirect('/admin/editarOrcamento/' . $id);
+        if (empty($orcamento['cliente_email'])) {
+            $this->flash('error', 'O cliente não possui e-mail cadastrado.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
+        }
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $link = $scheme . "://" . $_SERVER['HTTP_HOST'] . BASE_URL . "/auth/autorizarOrcamento/" . rawurlencode($orcamento['token_autorizacao']);
+        $mensagem = "<p>Uma nova proposta comercial / orçamento foi registrada para você.</p>";
+        $mensagem .= "<p>Você pode visualizar o Escopo, Valores e <strong>Aprovar ou Rejeitar</strong> o orçamento acessando o link abaixo:</p>";
+        $mensagem .= "<p><a href='" . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block; padding:10px 20px; background-color:#1e3a8a; color:#fff; text-decoration:none; border-radius:5px;'>Visualizar e Responder Orçamento</a></p>";
+
+        $enviado = \app\Helpers\MailHelper::enviarEmail($orcamento['cliente_email'], $orcamento['cliente_nome'], "Proposta Comercial / Orçamento #" . (int)$id, $mensagem);
+        $this->flash($enviado ? 'success' : 'error', $enviado ? 'E-mail enviado ao cliente.' : 'Não foi possível enviar o e-mail.');
+
+        $this->redirect('/admin/editarOrcamento/' . (int)$id);
     }
 
     public function excluirOrcamento($id) {
+        $this->requirePost();
+
+        if ($_SESSION['user_type'] !== 'admin') {
+            $this->flash('error', 'Apenas administradores podem excluir orçamentos.');
+            $this->redirect('/admin/orcamentos');
+        }
+
         $orcamentoModel = new OrcamentoModel();
-        $orcamentoModel->deleteBudget($id);
+        $orcamento = $orcamentoModel->getBudgetById($id);
+
+        if (!$orcamento) {
+            $this->flash('error', 'Orçamento não encontrado.');
+        } elseif ($orcamento['status'] === 'aprovado') {
+            $this->flash('error', 'Orçamentos aprovados não podem ser excluídos.');
+        } elseif ($orcamentoModel->deleteBudget($id)) {
+            $this->flash('success', 'Orçamento excluído com sucesso.');
+        } else {
+            $this->flash('error', 'Não foi possível excluir o orçamento.');
+        }
+
         $this->redirect('/admin/orcamentos');
     }
 
-    public function alterarStatusOrcamento($id) {
-        $this->requirePost();
-        $status = $_POST['status'] ?? 'pendente';
-        
-        $orcamentoModel = new OrcamentoModel();
-        $orcamentoModel->updateStatus($id, $status);
+    // ==========================================
+    // DECISÃO DE ORÇAMENTO (APROVAR / REJEITAR)
+    // ==========================================
 
+    public function aprovarOrcamento($id) {
+        $this->decidirOrcamento($id, OrcamentoModel::DECISION_APPROVE);
+    }
+
+    public function rejeitarOrcamento($id) {
+        $this->decidirOrcamento($id, OrcamentoModel::DECISION_REJECT);
+    }
+
+    private function decidirOrcamento($id, $decision) {
+        $this->requirePost();
+
+        $motivo = $decision === OrcamentoModel::DECISION_REJECT
+            ? Security::sanitizeInput($_POST['motivo'] ?? '')
+            : null;
+
+        $orcamentoModel = new OrcamentoModel();
+        $resultado = $orcamentoModel->decide($id, $decision, $_SESSION['user_id'], $motivo);
+
+        if ($this->isAjax()) {
+            $this->respondBudgetDecision($resultado);
+        }
+
+        $this->flashBudgetDecision($resultado);
         $this->redirect('/admin/orcamentos');
+    }
+
+    public function reativarOrcamento($id) {
+        $this->requirePost();
+
+        $orcamentoModel = new OrcamentoModel();
+        if ($orcamentoModel->reactivateBudget($id)) {
+            $this->flash('success', 'Orçamento reativado por mais 30 dias.');
+        } else {
+            $this->flash('warning', 'Apenas orçamentos expirados podem ser reativados.');
+        }
+
+        $this->redirect('/admin/editarOrcamento/' . (int)$id);
     }
 
     public function servicoAvulso() {
@@ -408,7 +557,8 @@ class AdminController extends Controller {
         $userModel = new UserModel();
         $this->view('admin/usuarios_list', [
             'title' => 'Gestão de Usuários',
-            'usuarios' => $userModel->getAllUsers() // Mostra APENAS funcionários
+            'usuarios' => $userModel->getAllUsers(),
+            'csrf_token' => Security::generateCsrfToken()
         ]);
     }
 
@@ -427,26 +577,31 @@ class AdminController extends Controller {
             'cpf_cnpj' => Security::sanitizeInput($_POST['cpf_cnpj'] ?? ''),
             'email' => Security::sanitizeInput($_POST['email'] ?? ''),
             'telefone' => Security::sanitizeInput($_POST['telefone'] ?? ''),
-            'perfil' => $_POST['perfil'] ?? 'cliente'
+            'perfil' => $_POST['perfil'] ?? 'tecnico'
         ];
 
+        if (!in_array($dados['perfil'], self::PERFIS_FUNCIONARIO, true)) {
+            die("ERRO: Perfil inválido.");
+        }
+
         $senha = $_POST['senha'] ?? '';
+        if (strlen($senha) < 8) {
+            die("ERRO: A senha deve ter pelo menos 8 caracteres.");
+        }
         $dados['senha_hash'] = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
 
-        // Captura as permissões do formulário e transforma em JSON
-        $permissoes = $_POST['permissoes'] ?? [];
-        $dados['permissoes'] = json_encode($permissoes);
+        $dados['permissoes'] = $this->sanitizePermissoes($_POST['permissoes'] ?? []);
 
         $userModel = new UserModel();
         
         // Verifica se o CPF já existe ANTES de tentar cadastrar
         if ($userModel->getUserByCpfCnpj($dados['cpf_cnpj'])) {
-            die("ERRO: Este CPF ou CNPJ (" . htmlspecialchars($dados['cpf_cnpj']) . ") já está cadastrado no sistema para outro usuário. Por favor, volte e use um CPF diferente.");
+            die("ERRO: Este CPF ou CNPJ (" . htmlspecialchars($dados['cpf_cnpj'], ENT_QUOTES, 'UTF-8') . ") já está cadastrado no sistema para outro usuário. Por favor, volte e use um CPF diferente.");
         }
 
         // Verifica se o E-mail já existe ANTES de tentar cadastrar
         if (!empty($dados['email']) && $userModel->getUserByEmail($dados['email'])) {
-            die("ERRO: O E-mail (" . htmlspecialchars($dados['email']) . ") já está cadastrado no sistema. Não é permitido usar o mesmo e-mail para contas diferentes. Por favor, volte e use um e-mail diferente.");
+            die("ERRO: O E-mail (" . htmlspecialchars($dados['email'], ENT_QUOTES, 'UTF-8') . ") já está cadastrado no sistema. Não é permitido usar o mesmo e-mail para contas diferentes. Por favor, volte e use um e-mail diferente.");
         }
         
         if (!$userModel->createUserByAdmin($dados)) {
@@ -490,23 +645,38 @@ class AdminController extends Controller {
             'perfil' => $_POST['perfil'] ?? 'tecnico'
         ];
 
+        if (!in_array($dados['perfil'], self::PERFIS_FUNCIONARIO, true)) {
+            die("ERRO: Perfil inválido.");
+        }
+
+        // Evita que o único administrador logado se rebaixe e perca o acesso.
+        if ($id == $_SESSION['user_id'] && $dados['perfil'] !== 'admin' && $_SESSION['user_type'] === 'admin') {
+            die("ERRO: Você não pode remover seu próprio perfil de administrador.");
+        }
+
         // Se preencheu a senha, gera o hash novo. Se não preencheu, ignora e mantém a atual.
         if (!empty($_POST['senha'])) {
+            if (strlen($_POST['senha']) < 8) {
+                die("ERRO: A senha deve ter pelo menos 8 caracteres.");
+            }
             $dados['senha_hash'] = password_hash($_POST['senha'], PASSWORD_BCRYPT, ['cost' => 12]);
         } else {
             $dados['senha_hash'] = null;
         }
 
-        $permissoes = $_POST['permissoes'] ?? [];
-        $dados['permissoes'] = json_encode($permissoes);
+        $dados['permissoes'] = $this->sanitizePermissoes($_POST['permissoes'] ?? []);
 
         $userModel = new UserModel();
         $usuarioAtual = $userModel->getUserById($id);
 
+        if (!$usuarioAtual) {
+            $this->redirect('/admin/usuarios');
+        }
+
         // Verifica duplicidade de E-mail se estiver mudando o e-mail
         if (!empty($dados['email']) && $dados['email'] !== $usuarioAtual['email']) {
             if ($userModel->getUserByEmail($dados['email'])) {
-                die("ERRO: O E-mail (" . htmlspecialchars($dados['email']) . ") já está cadastrado no sistema.");
+                die("ERRO: O E-mail (" . htmlspecialchars($dados['email'], ENT_QUOTES, 'UTF-8') . ") já está cadastrado no sistema.");
             }
         }
 
@@ -555,7 +725,7 @@ class AdminController extends Controller {
 
         $dados = [
             'cliente_id' => $_POST['cliente_id'] ?? '',
-            'valor_mensal' => str_replace(',', '.', $_POST['valor_mensal'] ?? '0'),
+            'valor_mensal' => Security::parseMoney($_POST['valor_mensal'] ?? '0'),
             'data_inicio' => $_POST['data_inicio'] ?? '',
             'data_validade' => $_POST['data_validade'] ?? '',
             'prazo_renovacao_anos' => (int)($_POST['prazo_renovacao_anos'] ?? 1),
@@ -590,7 +760,7 @@ class AdminController extends Controller {
         $this->requirePost();
 
         $dados = [
-            'valor_mensal' => str_replace(',', '.', $_POST['valor_mensal'] ?? '0'),
+            'valor_mensal' => Security::parseMoney($_POST['valor_mensal'] ?? '0'),
             'data_inicio' => $_POST['data_inicio'] ?? '',
             'data_validade' => $_POST['data_validade'] ?? '',
             'prazo_renovacao_anos' => (int)($_POST['prazo_renovacao_anos'] ?? 1),
@@ -623,7 +793,7 @@ class AdminController extends Controller {
             'cliente_id' => $_POST['cliente_id'] ?? '',
             'contrato_id' => !empty($_POST['contrato_id']) ? $_POST['contrato_id'] : null,
             'numero_nf' => Security::sanitizeInput($_POST['numero_nf'] ?? ''),
-            'valor' => str_replace(',', '.', $_POST['valor'] ?? '0'),
+            'valor' => Security::parseMoney($_POST['valor'] ?? '0'),
             'data_emissao' => $_POST['data_emissao'] ?? ''
         ];
 
@@ -666,7 +836,7 @@ class AdminController extends Controller {
 
         $dados = [
             'numero_nf' => Security::sanitizeInput($_POST['numero_nf'] ?? ''),
-            'valor' => str_replace(',', '.', $_POST['valor'] ?? '0'),
+            'valor' => Security::parseMoney($_POST['valor'] ?? '0'),
             'data_emissao' => $_POST['data_emissao'] ?? ''
         ];
 
@@ -705,12 +875,12 @@ class AdminController extends Controller {
         $dados = [
             'tipo' => $_POST['tipo'] ?? 'receita',
             'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
-            'valor' => str_replace(',', '.', $_POST['valor'] ?? '0'),
+            'valor' => Security::parseMoney($_POST['valor'] ?? '0'),
             'data_vencimento' => $_POST['data_vencimento'] ?? date('Y-m-d'),
             'status' => $_POST['status'] ?? 'pendente',
             'cliente_fornecedor_id' => !empty($_POST['cliente_fornecedor_id']) ? $_POST['cliente_fornecedor_id'] : null,
             'ticket_id' => !empty($_POST['ticket_id']) ? $_POST['ticket_id'] : null,
-            'data_pagamento' => ($_POST['status'] === 'pago') ? date('Y-m-d') : null
+            'data_pagamento' => (($_POST['status'] ?? '') === 'pago') ? date('Y-m-d') : null
         ];
 
         $contabilModel = new ContabilModel();
@@ -836,13 +1006,7 @@ class AdminController extends Controller {
     }
 
     public function empresa() {
-        $configModel = new ConfigModel();
-        
-        $this->view('admin/empresa_config', [
-            'title' => 'Dados da Empresa',
-            'empresa' => $configModel->getCompanyInfo(),
-            'csrf_token' => Security::generateCsrfToken()
-        ]);
+        $this->redirect('/admin/configuracoes');
     }
 
     public function salvarEmpresa() {
@@ -857,16 +1021,18 @@ class AdminController extends Controller {
             'endereco_completo' => Security::sanitizeInput($_POST['endereco_completo'] ?? '')
         ];
 
-        // Tratamento de Upload de Logo
-        if (!empty($_FILES['logo']['name'])) {
+        if (!empty($_FILES['logo']['name']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             $file = $_FILES['logo'];
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-            if (in_array($file['type'], $allowedTypes)) {
-                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $newName = 'logo_' . time() . '.' . $ext;
+            $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            if (isset($allowed[$mime]) && $file['size'] <= 5 * 1024 * 1024) {
+                $newName = 'logo_' . bin2hex(random_bytes(8)) . '.' . $allowed[$mime];
                 $uploadPath = APP_PATH . '/../uploads/company/';
                 if (!is_dir($uploadPath)) mkdir($uploadPath, 0755, true);
-                
+
                 if (move_uploaded_file($file['tmp_name'], $uploadPath . $newName)) {
                     $dados['logo_url'] = $newName;
                 }
@@ -876,7 +1042,8 @@ class AdminController extends Controller {
         $configModel = new ConfigModel();
         $configModel->updateCompany($dados);
 
-        $this->redirect('/admin/empresa');
+        $this->flash('success', 'Dados da empresa atualizados.');
+        $this->redirect('/admin/configuracoes');
     }
 
     public function salvarFornecedor() {
@@ -936,58 +1103,77 @@ class AdminController extends Controller {
     // ==================== Budget Items Management ====================
     public function adicionarItemOrcamento() {
         $this->requirePost();
-        $budget_id = $_POST['budget_id'] ?? null;
-        $tipo = $_POST['tipo'] ?? 'peca';
-        $descricao = $_POST['descricao'] ?? '';
-        $quantidade = (int)($_POST['quantidade'] ?? 1);
-        $valor_unitario = (float)str_replace(',', '.', $_POST['valor_unitario'] ?? '0');
 
-        if ($budget_id && $descricao && $valor_unitario > 0) {
-            $orcamentoModel = new OrcamentoModel();
-            $orcamentoModel->addBudgetItem($budget_id, $tipo, $descricao, $quantidade, $valor_unitario);
+        $budget_id = (int)($_POST['budget_id'] ?? 0);
+        $tipo = $_POST['tipo'] ?? 'peca';
+        $descricao = Security::sanitizeInput($_POST['descricao'] ?? '');
+        $quantidade = max(1, (int)($_POST['quantidade'] ?? 1));
+        $valor_unitario = Security::parseMoney($_POST['valor_unitario'] ?? '0');
+
+        $orcamentoModel = new OrcamentoModel();
+        $orcamento = $budget_id ? $orcamentoModel->getBudgetById($budget_id) : null;
+
+        if (!$orcamento) {
+            $this->flash('error', 'Orçamento não encontrado.');
+            $this->redirect('/admin/orcamentos');
+        }
+
+        if (!$orcamentoModel->isEditable($orcamento)) {
+            $this->flash('warning', 'Este orçamento já foi decidido e não aceita novos itens.');
+        } elseif ($descricao === '' || $valor_unitario <= 0 || !in_array($tipo, OrcamentoModel::ITEM_TYPES, true)) {
+            $this->flash('error', 'Informe descrição, tipo e um valor unitário maior que zero.');
+        } elseif ($orcamentoModel->addBudgetItem($budget_id, $tipo, $descricao, $quantidade, $valor_unitario)) {
+            $this->flash('success', 'Item adicionado ao orçamento.');
+        } else {
+            $this->flash('error', 'Não foi possível adicionar o item.');
         }
 
         $this->redirect('/admin/editarOrcamento/' . $budget_id);
     }
 
     public function removerItemOrcamento($item_id) {
+        $this->requirePost();
+
         $orcamentoModel = new OrcamentoModel();
-        $stmt = $this->db->prepare("SELECT budget_id FROM budget_items WHERE id = :id");
-        $stmt->bindParam(':id', $item_id);
-        $stmt->execute();
-        $result = $stmt->fetch();
-        $budget_id = $result['budget_id'] ?? null;
+        $item = $orcamentoModel->getBudgetItemById($item_id);
 
-        if ($item_id) {
-            $orcamentoModel->deleteBudgetItem($item_id);
-        }
-
-        if ($budget_id) {
-            $this->redirect('/admin/editarOrcamento/' . $budget_id);
-        } else {
+        if (!$item) {
+            $this->flash('error', 'Item não encontrado.');
             $this->redirect('/admin/orcamentos');
         }
+
+        $orcamento = $orcamentoModel->getBudgetById($item['budget_id']);
+        if (!$orcamentoModel->isEditable($orcamento)) {
+            $this->flash('warning', 'Este orçamento já foi decidido e não pode ser alterado.');
+        } elseif ($orcamentoModel->deleteBudgetItem($item_id)) {
+            $this->flash('success', 'Item removido do orçamento.');
+        } else {
+            $this->flash('error', 'Não foi possível remover o item.');
+        }
+
+        $this->redirect('/admin/editarOrcamento/' . (int)$item['budget_id']);
     }
 
     // ==================== Budget Print ====================
     public function imprimirOrcamentoNovo($id) {
         $orcamentoModel = new OrcamentoModel();
         $budget = $orcamentoModel->getBudgetById($id);
-        $budget_items = $orcamentoModel->getBudgetItems($id);
 
         if (!$budget) {
+            http_response_code(404);
             die("Orçamento não encontrado.");
         }
 
-        $config = new ConfigModel();
-        $companies = $config->getAllCompanies();
-        $company = $companies[0] ?? null;
+        $budget_items = $orcamentoModel->getBudgetItems($id);
 
-        $logo_url = $company['logo_url'] ?? null;
+        $config = new ConfigModel();
+        $company = $config->getCompanyInfo() ?: [];
+
+        $logo_url = !empty($company['logo_url']) ? BASE_URL . '/uploads/company/' . rawurlencode($company['logo_url']) : null;
         $company_name = $company['razao_social'] ?? 'Sua Empresa';
         $company_cnpj = $company['cnpj'] ?? null;
-        $company_phone = '';
-        $company_email = '';
+        $company_phone = $company['telefone'] ?? '';
+        $company_email = $company['email_contato'] ?? '';
 
         require_once APP_PATH . '/Views/admin/imprimir_orcamento.php';
     }
@@ -995,33 +1181,32 @@ class AdminController extends Controller {
     // ==================== WhatsApp Approval ====================
     public function enviarWhatsAppOrcamento($id) {
         $orcamentoModel = new OrcamentoModel();
-        $userModel = new UserModel();
-        
         $budget = $orcamentoModel->getBudgetById($id);
-        
+
         if (!$budget || empty($budget['cliente_telefone'])) {
-            $_SESSION['error'] = 'Orçamento não encontrado ou cliente sem telefone.';
-            $this->redirect('/admin/editarOrcamento/' . $id);
+            $this->flash('error', 'Orçamento não encontrado ou cliente sem telefone.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
             return;
         }
 
-        $approval_url = BASE_URL . '/auth/autorizarOrcamento/' . $budget['token_autorizacao'];
-        $approval_link = "http://" . $_SERVER['HTTP_HOST'] . $approval_url;
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $approval_link = $scheme . "://" . $_SERVER['HTTP_HOST'] . BASE_URL . '/auth/autorizarOrcamento/' . rawurlencode($budget['token_autorizacao']);
 
-        $mensagem = "Olá " . htmlspecialchars($budget['cliente_nome']) . ",\n\n";
-        $mensagem .= "Seu orçamento #{$id} - *" . htmlspecialchars($budget['titulo']) . "* foi gerado.\n\n";
+        $mensagem = "Olá " . $budget['cliente_nome'] . ",\n\n";
+        $mensagem .= "Seu orçamento #" . (int)$id . " - *" . $budget['titulo'] . "* foi gerado.\n\n";
         $mensagem .= "💰 Valor Total: *R$ " . number_format($budget['valor_total'], 2, ',', '.') . "*\n";
-        if ($budget['data_validade']) {
+        if (!empty($budget['data_validade'])) {
             $mensagem .= "📅 Válido até: *" . date('d/m/Y', strtotime($budget['data_validade'])) . "*\n\n";
         }
         $mensagem .= "Clique no link abaixo para visualizar, aprovar ou rejeitar o orçamento:\n";
         $mensagem .= $approval_link;
 
         $phone = preg_replace('/[^0-9]/', '', $budget['cliente_telefone']);
-        $whatsapp_url = "https://wa.me/55{$phone}?text=" . urlencode($mensagem);
+        if (strpos($phone, '55') !== 0) {
+            $phone = '55' . $phone;
+        }
 
-        $_SESSION['success'] = 'Link do WhatsApp gerado. Você será redirecionado...';
-        $this->redirect($whatsapp_url);
+        $this->redirectExternal("https://wa.me/{$phone}?text=" . rawurlencode($mensagem));
     }
 
     // ==================== Avulso Services ====================
@@ -1046,14 +1231,14 @@ class AdminController extends Controller {
     public function salvarServicoAvulsoNovo() {
         $this->requirePost();
 
-        $valor = (float)str_replace(',', '.', $_POST['valor'] ?? '0');
+        $valor = (float)Security::parseMoney($_POST['valor'] ?? '0');
         
         $dados = [
-            'cliente_id' => $_POST['cliente_id'] ?? null,
+            'cliente_id' => (int)($_POST['cliente_id'] ?? 0),
             'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
             'valor' => $valor,
-            'data_servico' => $_POST['data_servico'] ?? date('Y-m-d'),
-            'status' => $_POST['status'] ?? 'pendente'
+            'data_servico' => $this->parseValidade($_POST['data_servico'] ?? '') ?? date('Y-m-d'),
+            'status' => in_array($_POST['status'] ?? '', ['pendente', 'concluido', 'cancelado'], true) ? $_POST['status'] : 'pendente'
         ];
 
         if ($dados['cliente_id'] && $dados['descricao'] && $valor > 0) {
@@ -1086,13 +1271,13 @@ class AdminController extends Controller {
     public function salvarEdicaoServicoAvulso($id) {
         $this->requirePost();
 
-        $valor = (float)str_replace(',', '.', $_POST['valor'] ?? '0');
+        $valor = (float)Security::parseMoney($_POST['valor'] ?? '0');
         
         $dados = [
             'descricao' => Security::sanitizeInput($_POST['descricao'] ?? ''),
             'valor' => $valor,
-            'data_servico' => $_POST['data_servico'] ?? date('Y-m-d'),
-            'status' => $_POST['status'] ?? 'pendente'
+            'data_servico' => $this->parseValidade($_POST['data_servico'] ?? '') ?? date('Y-m-d'),
+            'status' => in_array($_POST['status'] ?? '', ['pendente', 'concluido', 'cancelado'], true) ? $_POST['status'] : 'pendente'
         ];
 
         $avulsoModel = new AvulsoServiceModel();
@@ -1103,9 +1288,10 @@ class AdminController extends Controller {
     }
 
     public function excluirServicoAvulso($id) {
+        $this->requirePost();
         $avulsoModel = new AvulsoServiceModel();
         $avulsoModel->deleteService($id);
-        $_SESSION['success'] = 'Serviço avulso deletado com sucesso!';
+        $_SESSION['success'] = 'Serviço avulso excluído com sucesso!';
         $this->redirect('/admin/servicosAvulsos');
     }
 }

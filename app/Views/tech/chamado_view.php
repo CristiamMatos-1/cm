@@ -95,9 +95,12 @@
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <h3 class="font-bold text-gray-800 mb-2">Assistente Virtual</h3>
                 <p class="text-sm text-gray-600 mb-4">Utilize a inteligência artificial do Google Gemini para analisar o problema e sugerir possíveis causas raízes.</p>
-                <a href="<?= BASE_URL ?>/tech/analisarIA/<?= $chamado['id'] ?>" class="block w-full text-center bg-indigo-600 text-white font-semibold py-2 px-4 rounded hover:bg-indigo-700 transition-colors">
-                    <i class="fas fa-magic mr-2"></i> Analisar com IA
-                </a>
+                <form action="<?= BASE_URL ?>/tech/analisarIA/<?= $chamado['id'] ?>" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                    <button type="submit" class="block w-full text-center bg-indigo-600 text-white font-semibold py-2 px-4 rounded hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-magic mr-2"></i> Analisar com IA
+                    </button>
+                </form>
             </div>
 
             <!-- Formulário de Triagem / Fechamento -->

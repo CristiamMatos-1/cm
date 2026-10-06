@@ -113,9 +113,9 @@
 
                 <div class="mb-6">
                     <label for="reg_senha" class="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
-                    <input type="password" id="reg_senha" name="reg_senha" required minlength="6"
+                    <input type="password" id="reg_senha" name="reg_senha" required minlength="8"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-corpBlue-500 focus:border-corpBlue-500 outline-none transition-shadow"
-                        placeholder="Mínimo 6 caracteres">
+                        placeholder="Mínimo 8 caracteres">
                 </div>
 
                 <button type="submit" class="w-full bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-900 focus:ring-4 focus:ring-gray-200 transition-all">

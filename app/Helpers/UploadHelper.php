@@ -8,6 +8,18 @@ class UploadHelper {
     private static $allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
     private static $allowedVideoTypes = ['video/mp4', 'video/webm'];
     private static $allowedDocTypes = ['application/pdf', 'text/xml', 'application/xml'];
+
+    // A extensão salva é sempre derivada do MIME real, nunca do nome enviado pelo usuário.
+    private static $extensionByMime = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'application/pdf' => 'pdf',
+        'text/xml' => 'xml',
+        'application/xml' => 'xml',
+    ];
     private static $maxSize = 20 * 1024 * 1024; // 20 MB
 
     /**
@@ -36,8 +48,7 @@ class UploadHelper {
             return ['error' => "Apenas arquivos PDF ou XML são permitidos."];
         }
 
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $safeName = uniqid('nf_', true) . '.' . strtolower($extension);
+        $safeName = 'nf_' . bin2hex(random_bytes(12)) . '.' . self::$extensionByMime[$mimeType];
         $destination = $uploadDir . $safeName;
 
         if (move_uploaded_file($file['tmp_name'], $destination)) {
@@ -53,6 +64,9 @@ class UploadHelper {
      */
     public static function processTicketMedia($files) {
         $uploadDir = __DIR__ . '/../../uploads/tickets/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
         $savedFiles = [];
         $errors = [];
 
@@ -87,8 +101,7 @@ class UploadHelper {
             }
 
             // Gera nome seguro
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $safeName = uniqid('media_', true) . '.' . strtolower($extension);
+            $safeName = 'media_' . bin2hex(random_bytes(12)) . '.' . self::$extensionByMime[$mimeType];
             $destination = $uploadDir . $safeName;
 
             if (move_uploaded_file($file['tmp_name'], $destination)) {

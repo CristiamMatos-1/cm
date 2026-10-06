@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orçamento #<?= $budget['id'] ?></title>
+    <title>Orçamento #<?= (int)$budget['id'] ?></title>
     <style>
         * {
             margin: 0;
@@ -199,21 +199,26 @@
             text-transform: uppercase;
         }
         
-        .status-pending {
+        .status-pendente, .status-pending {
             background: #fef3c7;
             color: #92400e;
         }
         
-        .status-approved {
+        .status-aprovado, .status-approved {
             background: #dcfce7;
             color: #166534;
         }
         
-        .status-rejected {
+        .status-rejeitado, .status-rejected {
             background: #fee2e2;
             color: #991b1b;
         }
         
+        .status-expirado {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
         @media print {
             body {
                 background: white;
@@ -254,7 +259,7 @@
         <div class="header">
             <div class="company-info">
                 <?php if ($logo_url): ?>
-                    <img src="<?= $logo_url ?>" alt="Logo" class="company-logo">
+                    <img src="<?= htmlspecialchars($logo_url, ENT_QUOTES, 'UTF-8') ?>" alt="Logo" class="company-logo">
                 <?php else: ?>
                     <div style="width: 80px; height: 80px; background: #e5e7eb; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-building" style="font-size: 40px; color: #9ca3af;"></i>
@@ -277,11 +282,11 @@
             <div class="document-title">
                 <h1>ORÇAMENTO</h1>
                 <div class="document-info">
-                    <div>Número: <strong>#<?= $budget['id'] ?></strong></div>
+                    <div>Número: <strong>#<?= (int)$budget['id'] ?></strong></div>
                     <div>Emitido em: <strong><?= date('d/m/Y', strtotime($budget['created_at'])) ?></strong></div>
                     <div style="margin-top: 10px;">
                         Status: <span class="status-badge status-<?= $budget['status'] ?>">
-                            <?= ucfirst(str_replace('_', ' ', $budget['status'])) ?>
+                            <?= htmlspecialchars(\app\Helpers\UI::budgetStatusLabel($budget['status'])) ?>
                         </span>
                     </div>
                 </div>
@@ -363,7 +368,7 @@
                                         echo $tipo_labels[$item['tipo']] ?? $item['tipo'];
                                         ?>
                                     </td>
-                                    <td class="text-center"><?= $item['quantidade'] ?></td>
+                                    <td class="text-center"><?= (int)$item['quantidade'] ?></td>
                                     <td class="text-right">R$ <?= number_format($item['valor_unitario'], 2, ',', '.') ?></td>
                                     <td class="text-right">R$ <?= number_format($item['subtotal'], 2, ',', '.') ?></td>
                                 </tr>
