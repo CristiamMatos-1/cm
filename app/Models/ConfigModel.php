@@ -77,27 +77,35 @@ class ConfigModel extends Model {
         return $stmt->fetch();
     }
 
+    public function getAllCompanies() {
+        return $this->db->query("SELECT * FROM companies ORDER BY id ASC")->fetchAll();
+    }
+
     public function updateCompany($data) {
         $existing = $this->getCompanyInfo();
-        
+        $logo = $data['logo_url'] ?? null;
+
         if ($existing) {
-            $stmt = $this->db->prepare("
-                UPDATE companies 
-                SET razao_social = :razao_social, cnpj = :cnpj, matriz_filial = :matriz_filial 
-                WHERE id = :id
-            ");
-            $stmt->bindParam(':id', $existing['id']);
+            $sql = "UPDATE companies SET razao_social = :razao_social, cnpj = :cnpj, matriz_filial = :matriz_filial";
+            if ($logo) {
+                $sql .= ", logo_url = :logo_url";
+            }
+            $sql .= " WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':id', (int)$existing['id'], \PDO::PARAM_INT);
         } else {
-            $stmt = $this->db->prepare("
-                INSERT INTO companies (razao_social, cnpj, matriz_filial) 
-                VALUES (:razao_social, :cnpj, :matriz_filial)
-            ");
+            $stmt = $this->db->prepare($logo
+                ? "INSERT INTO companies (razao_social, cnpj, matriz_filial, logo_url) VALUES (:razao_social, :cnpj, :matriz_filial, :logo_url)"
+                : "INSERT INTO companies (razao_social, cnpj, matriz_filial) VALUES (:razao_social, :cnpj, :matriz_filial)");
         }
 
-        $stmt->bindParam(':razao_social', $data['razao_social']);
-        $stmt->bindParam(':cnpj', $data['cnpj']);
-        $stmt->bindParam(':matriz_filial', $data['matriz_filial']);
-        
+        $stmt->bindValue(':razao_social', $data['razao_social']);
+        $stmt->bindValue(':cnpj', $data['cnpj']);
+        $stmt->bindValue(':matriz_filial', $data['matriz_filial']);
+        if ($logo) {
+            $stmt->bindValue(':logo_url', $logo);
+        }
+
         return $stmt->execute();
     }
 }

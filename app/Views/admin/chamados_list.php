@@ -49,7 +49,11 @@
                                 <a href="https://wa.me/55<?= $zap ?>?text=<?= $msg ?>" target="_blank" class="text-green-600 hover:text-green-900 mr-3" title="Notificar via WhatsApp"><i class="fab fa-whatsapp text-lg"></i></a>
                             <?php endif; ?>
                             <a href="<?= BASE_URL ?>/admin/editarChamado/<?= $chamado['id'] ?>" class="text-indigo-600 hover:text-indigo-900 mr-3"><i class="fas fa-edit"></i> Editar</a>
-                            <a href="<?= BASE_URL ?>/admin/excluirChamado/<?= $chamado['id'] ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir este chamado?');"><i class="fas fa-trash"></i></a>
+                            <form action="<?= BASE_URL ?>/admin/excluirChamado/<?= (int)$chamado['id'] ?>" method="POST" class="inline"
+                                  data-confirm="O chamado #<?= (int)$chamado['id'] ?> será excluído permanentemente." data-confirm-title="Excluir chamado?" data-confirm-button="Sim, excluir">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token ?? '') ?>">
+                                <button type="submit" data-no-loading class="text-red-600 hover:text-red-900" title="Excluir"><i class="fas fa-trash"></i></button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>

@@ -1,0 +1,46 @@
+/* Estilos complementares ao Tailwind (CDN) */
+
+@keyframes ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ui-toast-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.ui-modal-backdrop { animation: ui-fade-in .15s ease-out; }
+.ui-modal-panel { animation: ui-pop-in .18s ease-out; }
+.ui-toast { animation: ui-toast-in .22s ease-out; }
+.ui-toast.ui-toast-leaving { opacity: 0; transform: translateX(24px); transition: all .2s ease-in; }
+
+.btn-loading { position: relative; pointer-events: none; opacity: .85; }
+
+/* Tabelas viram cartões no mobile quando usam .responsive-table */
+@media (max-width: 767px) {
+    .responsive-table thead { display: none; }
+    .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; }
+    .responsive-table tr { border-bottom: 1px solid #e5e7eb; padding: .75rem 1rem; }
+    .responsive-table td {
+        padding: .25rem 0 !important;
+        white-space: normal !important;
+        display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start;
+    }
+    .responsive-table td::before {
+        content: attr(data-label);
+        font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+        color: #6b7280; flex-shrink: 0; padding-top: .15rem;
+    }
+    .responsive-table tr.hidden { display: none; }
+    .responsive-table td[data-label=""]::before { display: none; }
+    .responsive-table td.cell-actions { justify-content: flex-end; flex-wrap: wrap; padding-top: .5rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-modal-backdrop, .ui-modal-panel, .ui-toast { animation: none; }
+}
+
+.filter-chip { transition: background-color .15s, color .15s, box-shadow .15s; }
+.filter-chip.is-active { background-color: #1e3a8a; color: #fff; border-color: #1e3a8a; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.filter-chip.is-active .chip-count { background-color: rgba(255,255,255,.2); color: #fff; }

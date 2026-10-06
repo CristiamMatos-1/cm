@@ -16,7 +16,7 @@
             <h3 class="font-bold text-gray-800"><i class="fas fa-building mr-2 text-corpBlue-500"></i> Dados da Minha Empresa</h3>
         </div>
         <div class="p-6">
-            <form action="<?= BASE_URL ?>/admin/salvarEmpresa" method="POST">
+            <form action="<?= BASE_URL ?>/admin/salvarEmpresa" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
                 
                 <div class="mb-4">
@@ -36,6 +36,10 @@
                             <option value="parceira" <?= ($empresa['matriz_filial'] ?? '') === 'parceira' ? 'selected' : '' ?>>Parceira</option>
                         </select>
                     </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Logo (JPG ou PNG, até 5 MB)</label>
+                    <input type="file" name="logo" accept="image/jpeg,image/png" class="w-full text-sm text-gray-600">
                 </div>
                 <button type="submit" class="bg-corpBlue-600 text-white py-2 px-4 rounded hover:bg-corpBlue-700 text-sm font-medium">Salvar Empresa</button>
             </form>

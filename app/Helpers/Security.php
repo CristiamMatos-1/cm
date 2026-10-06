@@ -17,10 +17,10 @@ class Security {
      * Valida o token CSRF enviado via POST.
      */
     public static function validateCsrfToken($token) {
-        if (isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token)) {
-            return true;
+        if (!is_string($token) || $token === '' || empty($_SESSION['csrf_token'])) {
+            return false;
         }
-        return false;
+        return hash_equals($_SESSION['csrf_token'], $token);
     }
 
     /**
@@ -28,7 +28,7 @@ class Security {
      */
     public static function esc($string) {
         if ($string === null) return '';
-        return htmlspecialchars($string, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return htmlspecialchars((string)$string, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     /**
@@ -40,8 +40,24 @@ class Security {
                 $input[$key] = self::sanitizeInput($value);
             }
         } else {
-            $input = trim(strip_tags($input));
+            $input = trim(strip_tags((string)$input));
         }
         return $input;
+    }
+
+    /**
+     * Converte um valor monetário digitado (ex: "1.234,56" ou "12,5") em float.
+     */
+    public static function parseMoney($value) {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return 0.0;
+        }
+        if (strpos($value, ',') !== false) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        }
+        $value = preg_replace('/[^0-9.\-]/', '', $value);
+        return is_numeric($value) ? round((float)$value, 2) : 0.0;
     }
 }

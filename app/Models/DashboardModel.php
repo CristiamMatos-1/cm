@@ -111,23 +111,8 @@ class DashboardModel extends Model {
         return $stmt->fetchAll();
     }
 
-    public function getMonthlyRevenueChart($months = 12) {
-        $stmt = $this->db->query("
-            SELECT 
-                DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ROW_NUMBER() OVER () - 1 MONTH), '%Y-%m') as mes,
-                COALESCE(SUM(b.valor_total), 0) as budgets,
-                COALESCE((SELECT SUM(valor) FROM invoices i WHERE DATE_FORMAT(i.data_emissao, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ROW_NUMBER() OVER () - 1 MONTH), '%Y-%m')), 0) as notas_fiscais,
-                COALESCE((SELECT SUM(valor) FROM avulso_services s WHERE DATE_FORMAT(s.data_servico, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ROW_NUMBER() OVER () - 1 MONTH), '%Y-%m') AND status = 'concluido'), 0) as servicos
-            FROM (
-                SELECT ROW_NUMBER() OVER () as num 
-                FROM budgets b
-                LIMIT $months
-            ) nums
-            LEFT JOIN budgets b ON DATE_FORMAT(b.created_at, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ROW_NUMBER() OVER () - 1 MONTH), '%Y-%m') AND b.status = 'aprovado'
-            GROUP BY mes
-            ORDER BY mes DESC
-        ");
-        return $stmt->fetchAll();
+    public function checkExpiredBudgets() {
+        return (new OrcamentoModel())->checkExpiredBudgets();
     }
 
     public function getRecentTickets($limit = 5) {

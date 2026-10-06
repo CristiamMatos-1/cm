@@ -44,9 +44,13 @@
                             <a href="<?= BASE_URL ?>/admin/editarUsuario/<?= $u['id'] ?>" class="text-indigo-600 hover:text-indigo-900 mr-3">
                                 <i class="fas fa-user-edit mr-1"></i> Editar Perfil
                             </a>
-                            <a href="<?= BASE_URL ?>/admin/excluirUsuario/<?= $u['id'] ?>" class="text-red-600 hover:text-red-900" onclick="return confirm('Tem certeza que deseja excluir este funcionário? Isso pode afetar chamados vinculados a ele.');">
-                                <i class="fas fa-trash"></i> Excluir
-                            </a>
+                            <?php if ((int)$u['id'] !== (int)$_SESSION['user_id']): ?>
+                            <form action="<?= BASE_URL ?>/admin/excluirUsuario/<?= (int)$u['id'] ?>" method="POST" class="inline"
+                                  data-confirm="Excluir o funcionário &quot;<?= htmlspecialchars($u['nome'], ENT_QUOTES, 'UTF-8') ?>&quot;? Isso pode afetar chamados vinculados a ele." data-confirm-title="Excluir funcionário?" data-confirm-button="Sim, excluir">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token ?? '') ?>">
+                                <button type="submit" data-no-loading class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i> Excluir</button>
+                            </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

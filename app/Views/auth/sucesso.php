@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($titulo) ?></title>
-    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+    <title><?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></title>
+    <meta name="robots" content="noindex, nofollow">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gradient-to-br from-green-50 to-emerald-100 min-h-screen flex items-center justify-center">
     <div class="w-full max-w-md mx-auto px-4">
@@ -14,12 +16,12 @@
                 <div class="mb-4">
                     <i class="fas fa-check-circle text-white text-5xl"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white"><?= htmlspecialchars($titulo) ?></h1>
+                <h1 class="text-2xl font-bold text-white"><?= htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') ?></h1>
             </div>
 
             <!-- Message -->
             <div class="p-8 text-center">
-                <p class="text-gray-700 text-lg mb-6"><?= htmlspecialchars($mensagem) ?></p>
+                <p class="text-gray-700 text-lg mb-6"><?= htmlspecialchars($mensagem, ENT_QUOTES, 'UTF-8') ?></p>
                 
                 <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded text-left mb-6">
                     <p class="text-sm text-green-800">
@@ -34,6 +36,5 @@
         </div>
     </div>
 
-    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
 </body>
 </html>
