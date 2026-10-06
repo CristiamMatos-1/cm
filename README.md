@@ -120,8 +120,12 @@ CREATE TABLE avulso_services (
 - `GET /admin/dashboard` - Visualizar dashboard
 - `GET /admin/imprimirOrcamentoNovo/{id}` - Imprimir orçamento (novo formato com itens)
 - `POST /admin/adicionarItemOrcamento` - Adicionar item ao orçamento
-- `GET /admin/removerItemOrcamento/{item_id}` - Remover item do orçamento
+- `POST /admin/removerItemOrcamento/{item_id}` - Remover item do orçamento (CSRF)
 - `GET /admin/enviarWhatsAppOrcamento/{id}` - Gerar link WhatsApp e redirecionar
+- `POST /admin/aprovarOrcamento/{id}` / `POST /admin/rejeitarOrcamento/{id}` - Decisão do admin (AJAX JSON, CSRF, justificativa opcional/obrigatória na rejeição)
+- `POST /client/responderOrcamento/{id}` - Decisão do cliente logado
+- `POST /admin/reativarOrcamento/{id}` - Reativar orçamento expirado
+- `POST /admin/excluirOrcamento/{id}` - Excluir orçamento (admin, bloqueado se aprovado)
 - `GET /auth/autorizarOrcamento/{token}` - Página de autorização via link
 - `POST /auth/aprovarOrcamento` - Aprovar orçamento via link
 - `POST /auth/rejeitarOrcamento` - Rejeitar orçamento via link
@@ -134,7 +138,17 @@ CREATE TABLE avulso_services (
 - `POST /admin/salvarServicoAvulsoNovo` - Salvar novo serviço
 - `GET /admin/editarServicoAvulso/{id}` - Editar serviço
 - `POST /admin/salvarEdicaoServicoAvulso/{id}` - Salvar edição
-- `GET /admin/excluirServicoAvulso/{id}` - Excluir serviço
+- `POST /admin/excluirServicoAvulso/{id}` - Excluir serviço (CSRF)
+
+> Ações destrutivas (`excluir*`, `enviarEmail*`, `assumirChamado`, `analisarIA`) agora exigem POST com `csrf_token`.
+
+### ✅ Fluxo de Aprovação/Rejeição
+
+- Decisão transacional (`SELECT ... FOR UPDATE` + `UPDATE ... WHERE status='pendente'`); orçamentos já finalizados retornam HTTP 409.
+- Registra `data_aprovacao`/`data_rejeicao`, usuário e motivo.
+- Resposta JSON em requisições AJAX (`X-Requested-With`); a listagem atualiza badge, contadores e filtros em tempo real (`assets/js/budgets.js`, `assets/js/ui.js`).
+- Badges: verde = aprovado, vermelho = rejeitado, amarelo = pendente, cinza = expirado.
+- Defina `APP_DEBUG=1` no ambiente para exibir erros PHP (desligado por padrão).
 
 ### 🔒 Segurança e Validação
 
