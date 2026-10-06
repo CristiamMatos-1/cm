@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/bash -c 'DEST=/home2/coninfom/public_html/cm; /bin/mkdir -p "$DEST/uploads" && if command -v rsync >/dev/null 2>&1; then rsync -rlt --chmod=D755,F644 --exclude=.git --exclude=.github --exclude=.cpanel.yml --exclude=database --exclude=database.sql --exclude=README.md --exclude=error_log --exclude="*.zip" --exclude=/uploads ./ "$DEST/"; else tar --exclude=./.git --exclude=./.github --exclude=./.cpanel.yml --exclude=./database --exclude=./database.sql --exclude=./README.md --exclude=./error_log --exclude="*.zip" --exclude=./uploads -cf - . | tar -xf - -C "$DEST"; fi'

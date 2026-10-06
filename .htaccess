@@ -8,7 +8,8 @@ RewriteRule ^uploads/.*\.(php[0-9]?|phtml|phar)$ - [F,NC,L]
 
 # Bloqueia acesso direto a código-fonte e arquivos de infraestrutura
 RewriteRule ^app/ - [F,L]
-RewriteRule ^(database\.sql|error_log|README\.md)$ - [F,NC,L]
+RewriteRule ^database/ - [F,L]
+RewriteRule ^(database\.sql|error_log|README\.md|\.cpanel\.yml)$ - [F,NC,L]
 
 # Front controller: encaminha rotas amigáveis para index.php
 RewriteCond %{REQUEST_FILENAME} !-f

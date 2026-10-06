@@ -34,23 +34,24 @@ Observações para evitar erro 404:
 - O `.htaccess` da raiz precisa estar publicado.
 - O Apache do cPanel deve estar com `mod_rewrite` habilitado.
 
-## Atualização de banco (ambientes antigos)
+## Banco de dados
 
-Se o ambiente já existia antes dessas colunas de chamados, execute os `ALTER TABLE` abaixo no MySQL:
+| Situação | Arquivo | Como usar |
+|---|---|---|
+| Instalação nova (banco vazio) | `database.sql` | phpMyAdmin > selecionar o banco > Importar |
+| Sistema já em produção | `database/migracao_correcao_schema.sql` | **Backup** > phpMyAdmin > selecionar o banco > Importar |
 
-```sql
-ALTER TABLE tickets ADD COLUMN programador_id INT NULL AFTER tecnico_id;
-ALTER TABLE tickets ADD COLUMN engenheiro_id INT NULL AFTER programador_id;
-ALTER TABLE tickets ADD COLUMN valor_pecas DECIMAL(10,2) NULL AFTER relatorio_final;
-ALTER TABLE tickets ADD COLUMN valor_mao_obra DECIMAL(10,2) NULL AFTER valor_pecas;
-ALTER TABLE tickets ADD COLUMN valor_servico DECIMAL(10,2) NULL AFTER valor_mao_obra;
-ALTER TABLE tickets ADD COLUMN forma_pagamento VARCHAR(50) NULL AFTER valor_servico;
-ALTER TABLE tickets ADD COLUMN autorizado_por VARCHAR(100) NULL AFTER forma_pagamento;
-ALTER TABLE tickets ADD COLUMN data_autorizacao DATETIME NULL AFTER autorizado_por;
-ALTER TABLE tickets ADD COLUMN closed_at DATETIME NULL AFTER data_autorizacao;
-ALTER TABLE tickets ADD CONSTRAINT fk_tickets_programador FOREIGN KEY (programador_id) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE tickets ADD CONSTRAINT fk_tickets_engenheiro FOREIGN KEY (engenheiro_id) REFERENCES users(id) ON DELETE SET NULL;
-```
+A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`). Orçamentos antigos sem token ganham um token de autorização.
+
+## Deploy pelo cPanel (Git Version Control)
+
+O arquivo `.cpanel.yml` copia o código para `/home2/coninfom/public_html/cm` (sem `.git`, `database/`, `database.sql`, `README.md`, zips e sem tocar em `uploads/`).
+
+1. cPanel > **Git Version Control** > **Manage** no repositório.
+2. Aba **Pull or Deploy** > **Update from Remote** (traz os commits do GitHub).
+3. Na mesma aba, **Deploy HEAD Commit** (executa o `.cpanel.yml`).
+
+Também há o deploy automático por GitHub Actions (`.github/workflows/deploy-cpanel-sftp.yml`) a cada push em `main`.
 
 ## Versão 2.0 - Novos Recursos Implementados
 
