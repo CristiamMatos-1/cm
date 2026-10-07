@@ -139,6 +139,7 @@ class AuthController extends Controller {
         $this->view('auth/autorizar_orcamento', [
             'budget' => $budget,
             'items' => $orcamentoModel->getBudgetItems($budget['id']),
+            'historico' => $orcamentoModel->getPublicHistory($budget['id']),
             'csrf_token' => Security::generateCsrfToken()
         ]);
     }
@@ -164,7 +165,7 @@ class AuthController extends Controller {
             $motivo = $decision === \app\Models\OrcamentoModel::DECISION_REJECT
                 ? Security::sanitizeInput($_POST['motivo'] ?? '')
                 : null;
-            $resultado = $orcamentoModel->decide($budget['id'], $decision, $budget['cliente_id'], $motivo);
+            $resultado = $orcamentoModel->decide($budget['id'], $decision, $budget['cliente_id'], $motivo, 'link_publico');
         }
 
         if ($this->isAjax()) {

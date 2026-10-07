@@ -20,6 +20,9 @@
 --   * tabelas ausentes: budget_items, avulso_services,
 --     projetos_software, financeiro_contabil (e demais, se faltarem)
 --   * gera token de autorização para orçamentos antigos sem token
+--   * LGPD: histórico de orçamentos (budget_history), solicitações de
+--     titulares (lgpd_requests), log de auditoria (audit_log), colunas de
+--     consentimento/anonimização em users e encarregado em companies
 -- =====================================================================
 
 SET NAMES utf8mb4;
@@ -46,6 +49,10 @@ CREATE TABLE IF NOT EXISTS users (
     bairro VARCHAR(100) NULL,
     cidade VARCHAR(100) NULL,
     estado VARCHAR(2) NULL,
+    consentimento_em DATETIME NULL, -- LGPD: data/hora do aceite da Política de Privacidade
+    consentimento_versao VARCHAR(20) NULL,
+    consentimento_ip VARCHAR(45) NULL,
+    anonimizado_em DATETIME NULL, -- LGPD: preenchido quando o titular é anonimizado
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -56,6 +63,8 @@ CREATE TABLE IF NOT EXISTS companies (
     razao_social VARCHAR(150) NOT NULL,
     cnpj VARCHAR(20) NOT NULL UNIQUE,
     logo_url VARCHAR(255),
+    encarregado_nome VARCHAR(150) NULL, -- LGPD: encarregado pelo tratamento de dados (DPO)
+    email_privacidade VARCHAR(150) NULL, -- LGPD: canal de contato do titular
     matriz_filial ENUM('matriz', 'filial', 'parceira') DEFAULT 'matriz',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -240,6 +249,56 @@ CREATE TABLE IF NOT EXISTS financeiro_contabil (
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Histórico (trilha de auditoria) das decisões e reaberturas de orçamentos.
+-- Nunca é apagado ao reabrir um orçamento: mantém quem/quando/de onde.
+CREATE TABLE IF NOT EXISTS budget_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    budget_id INT NOT NULL,
+    acao VARCHAR(20) NOT NULL, -- criado | aprovado | rejeitado | reaberto | reativado | expirado | nova_versao
+    status_anterior VARCHAR(20) NULL,
+    status_novo VARCHAR(20) NULL,
+    usuario_id INT NULL,
+    origem VARCHAR(20) NOT NULL DEFAULT 'sistema', -- admin | tecnico | cliente | link_publico | sistema
+    motivo TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_budget_history_budget (budget_id),
+    FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Solicitações de titulares de dados (LGPD, art. 18)
+CREATE TABLE IF NOT EXISTS lgpd_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tipo VARCHAR(30) NOT NULL, -- acesso | correcao | anonimizacao | portabilidade | revogacao_consentimento | outro
+    mensagem TEXT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'aberta', -- aberta | atendida | negada
+    resposta TEXT NULL,
+    atendido_por INT NULL,
+    atendido_em DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_lgpd_requests_status (status),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (atendido_por) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Registro de ações sensíveis (exportação, anonimização, exclusão de dados pessoais)
+CREATE TABLE IF NOT EXISTS audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
+    acao VARCHAR(60) NOT NULL,
+    entidade VARCHAR(40) NOT NULL,
+    entidade_id INT NULL,
+    detalhes TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_log_entidade (entidade, entidade_id),
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- ---------------------------------------------------------------------
 -- 2. users
 -- ---------------------------------------------------------------------
@@ -265,10 +324,24 @@ PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'updated_at');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
+-- LGPD: consentimento e anonimização
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `consentimento_em` DATETIME NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'consentimento_em');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `consentimento_versao` VARCHAR(20) NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'consentimento_versao');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `consentimento_ip` VARCHAR(45) NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'consentimento_ip');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `anonimizado_em` DATETIME NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'anonimizado_em');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
 -- ---------------------------------------------------------------------
 -- 3. companies
 -- ---------------------------------------------------------------------
 SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `companies` ADD COLUMN `logo_url` VARCHAR(255) NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = 'logo_url');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `companies` ADD COLUMN `encarregado_nome` VARCHAR(150) NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = 'encarregado_nome');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `companies` ADD COLUMN `email_privacidade` VARCHAR(150) NULL', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = 'email_privacidade');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 -- ---------------------------------------------------------------------
@@ -348,6 +421,14 @@ UPDATE `budgets` SET `titulo` = CONCAT('Orçamento #', id) WHERE `titulo` IS NUL
 
 -- Orçamentos antigos sem token ganham um token (mesmo formato: 64 hex)
 UPDATE `budgets` SET `token_autorizacao` = SHA2(CONCAT(id, UUID(), RAND()), 256) WHERE `token_autorizacao` IS NULL OR `token_autorizacao` = '';
+
+-- Histórico: registra, uma única vez, as decisões já existentes (sem IP, que não era coletado)
+INSERT INTO `budget_history` (`budget_id`, `acao`, `status_anterior`, `status_novo`, `usuario_id`, `origem`, `motivo`, `created_at`)
+SELECT b.id, 'aprovado', 'pendente', 'aprovado', b.autorizado_por, 'sistema', 'Registro migrado do sistema anterior', COALESCE(b.data_autorizacao, b.created_at)
+FROM `budgets` b WHERE b.status = 'aprovado' AND NOT EXISTS (SELECT 1 FROM `budget_history` h WHERE h.budget_id = b.id);
+INSERT INTO `budget_history` (`budget_id`, `acao`, `status_anterior`, `status_novo`, `usuario_id`, `origem`, `motivo`, `created_at`)
+SELECT b.id, 'rejeitado', 'pendente', 'rejeitado', b.rejeitado_por, 'sistema', COALESCE(b.motivo_rejeicao, 'Registro migrado do sistema anterior'), COALESCE(b.data_rejeicao, b.created_at)
+FROM `budgets` b WHERE b.status = 'rejeitado' AND NOT EXISTS (SELECT 1 FROM `budget_history` h WHERE h.budget_id = b.id);
 
 -- ---------------------------------------------------------------------
 -- 6. OPCIONAL - recuperar orçamentos aprovados que o sistema antigo

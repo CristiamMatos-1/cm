@@ -79,12 +79,16 @@
                 text.classList.toggle('hidden', !budget.decision_text);
             });
 
+            node.querySelectorAll('[data-budget-decision-text-inline]').forEach(function (inline) {
+                inline.textContent = budget.decision_text ? ' ' + budget.decision_text.replace(/^\S+\s+/, '') : '';
+            });
+
             node.querySelectorAll('fieldset[data-budget-lockable]').forEach(function (fieldset) {
                 fieldset.disabled = budget.status === 'aprovado' || budget.status === 'rejeitado';
             });
 
             node.querySelectorAll('[data-hide-when-approved]').forEach(function (target) {
-                target.classList.toggle('hidden', budget.status === 'aprovado');
+                target.classList.toggle('hidden', budget.status === 'aprovado' || budget.status === 'rejeitado');
             });
 
             node.querySelectorAll('[data-budget-pending-only]').forEach(function (pendingOnly) {
@@ -93,9 +97,9 @@
 
             node.querySelectorAll('[data-budget-decided-only]').forEach(function (decidedOnly) {
                 var kind = decidedOnly.getAttribute('data-for');
-                var show = kind === 'expirado'
-                    ? budget.status === 'expirado'
-                    : (budget.status === 'aprovado' || budget.status === 'rejeitado');
+                var show = kind === 'decided'
+                    ? (budget.status === 'aprovado' || budget.status === 'rejeitado')
+                    : budget.status === kind;
                 decidedOnly.classList.toggle('hidden', !show);
             });
         });

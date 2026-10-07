@@ -50,7 +50,7 @@ class ClientController extends Controller {
                 $motivo = $acao === \app\Models\OrcamentoModel::DECISION_REJECT
                     ? Security::sanitizeInput($_POST['motivo'] ?? '')
                     : null;
-                $resultado = $orcamentoModel->decide($id, $acao, $_SESSION['user_id'], $motivo);
+                $resultado = $orcamentoModel->decide($id, $acao, $_SESSION['user_id'], $motivo, 'cliente');
             }
         }
 

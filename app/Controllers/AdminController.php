@@ -13,6 +13,7 @@ use app\Models\ContabilModel;
 use app\Models\ProjetoModel;
 use app\Helpers\Security;
 use app\Helpers\UploadHelper;
+use app\Helpers\Audit;
 
 class AdminController extends Controller {
 
@@ -51,7 +52,7 @@ class AdminController extends Controller {
                 'acesso_financeiro' => ['contabil', 'novolancamentocontabil', 'alterarstatuslancamento'],
                 'criar_orcamento' => [
                     'orcamentos', 'novoorcamento', 'salvarorcamento', 'editarorcamento', 'salvaredicaoorcamento',
-                    'aprovarorcamento', 'rejeitarorcamento', 'reativarorcamento',
+                    'aprovarorcamento', 'rejeitarorcamento', 'reativarorcamento', 'duplicarorcamento',
                     'adicionaritemorcamento', 'removeritemorcamento',
                     'imprimirorcamento', 'imprimirorcamentonovo', 'enviaremailorcamento', 'enviarwhatsapporcamento'
                 ],
@@ -358,7 +359,9 @@ class AdminController extends Controller {
             'title' => 'Orçamento #' . (int)$id,
             'orcamento' => $orcamento,
             'itens' => $orcamentoModel->getBudgetItems($id),
+            'historico' => $orcamentoModel->getHistory($id),
             'editavel' => $orcamentoModel->isEditable($orcamento),
+            'ehAdmin' => $_SESSION['user_type'] === 'admin',
             'chamados_abertos' => $chamadoModel->getAllChamados(),
             'csrf_token' => Security::generateCsrfToken(),
             'podeExcluir' => $_SESSION['user_type'] === 'admin'
@@ -469,9 +472,10 @@ class AdminController extends Controller {
 
         if (!$orcamento) {
             $this->flash('error', 'Orçamento não encontrado.');
-        } elseif ($orcamento['status'] === 'aprovado') {
-            $this->flash('error', 'Orçamentos aprovados não podem ser excluídos.');
+        } elseif ($orcamentoModel->hasDecisionHistory($id)) {
+            $this->flash('error', 'Orçamentos que já foram aprovados ou rejeitados não podem ser excluídos: o registro da decisão é mantido. Use "Reabrir" ou crie uma nova versão.');
         } elseif ($orcamentoModel->deleteBudget($id)) {
+            Audit::log('orcamento_excluido', 'budget', (int)$id, ['status' => $orcamento['status']]);
             $this->flash('success', 'Orçamento excluído com sucesso.');
         } else {
             $this->flash('error', 'Não foi possível excluir o orçamento.');
@@ -500,7 +504,7 @@ class AdminController extends Controller {
             : null;
 
         $orcamentoModel = new OrcamentoModel();
-        $resultado = $orcamentoModel->decide($id, $decision, $_SESSION['user_id'], $motivo);
+        $resultado = $orcamentoModel->decide($id, $decision, $_SESSION['user_id'], $motivo, $_SESSION['user_type'] === 'admin' ? 'admin' : 'tecnico');
 
         if ($this->isAjax()) {
             $this->respondBudgetDecision($resultado);
@@ -520,6 +524,48 @@ class AdminController extends Controller {
             $this->flash('warning', 'Apenas orçamentos expirados podem ser reativados.');
         }
 
+        $this->redirect('/admin/editarOrcamento/' . (int)$id);
+    }
+
+    /**
+     * Reabre um orçamento aprovado/rejeitado para uma nova resposta. Exclusivo de administradores.
+     * A decisão anterior permanece registrada no histórico.
+     */
+    public function reabrirOrcamento($id) {
+        $this->requirePost();
+
+        if ($_SESSION['user_type'] !== 'admin') {
+            $this->flash('error', 'Somente administradores podem reabrir um orçamento já aprovado ou rejeitado.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$id);
+        }
+
+        $motivo = Security::sanitizeInput($_POST['motivo'] ?? '');
+        $orcamentoModel = new OrcamentoModel();
+        $resultado = $orcamentoModel->reopen($id, $_SESSION['user_id'], $motivo);
+
+        if ($resultado['ok']) {
+            Audit::log('orcamento_reaberto', 'budget', (int)$id);
+        }
+
+        $this->flashBudgetDecision($resultado);
+        $this->redirect('/admin/editarOrcamento/' . (int)$id);
+    }
+
+    /**
+     * Cria um novo orçamento a partir de um existente (nova versão com novo link).
+     */
+    public function duplicarOrcamento($id) {
+        $this->requirePost();
+
+        $orcamentoModel = new OrcamentoModel();
+        $novoId = $orcamentoModel->duplicateBudget($id);
+
+        if ($novoId) {
+            $this->flash('success', 'Nova versão criada: orçamento #' . $novoId . '. Ela possui um novo link de aprovação.');
+            $this->redirect('/admin/editarOrcamento/' . (int)$novoId);
+        }
+
+        $this->flash('error', 'Não foi possível criar a nova versão do orçamento.');
         $this->redirect('/admin/editarOrcamento/' . (int)$id);
     }
 

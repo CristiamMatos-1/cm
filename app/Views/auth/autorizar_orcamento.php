@@ -5,6 +5,7 @@ use app\Helpers\Security;
 $pendente = $budget['status'] === 'pendente';
 $decisionText = UI::budgetDecisionText($budget);
 $expirado = $budget['status'] === 'expirado';
+$historico = $historico ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -36,7 +37,7 @@ $expirado = $budget['status'] === 'expirado';
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Cliente</p>
-                        <p class="text-base font-semibold text-gray-800"><?= Security::esc($budget['cliente_nome']) ?></p>
+                        <p class="text-base font-semibold text-gray-800"><?= Security::esc(UI::maskName($budget['cliente_nome'])) ?></p>
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Data de emissão</p>
@@ -114,16 +115,33 @@ $expirado = $budget['status'] === 'expirado';
                     </div>
                 <?php endif; ?>
 
-                <div data-budget-decided-only data-for="decided" class="<?= in_array($budget['status'], ['aprovado', 'rejeitado'], true) ? '' : 'hidden' ?> p-4 rounded-xl text-sm text-center bg-blue-50 text-blue-800">
-                    <i class="fas fa-check-circle mr-1"></i> Sua resposta foi registrada e não pode mais ser alterada. Obrigado!
+                <div data-budget-decided-only data-for="aprovado" role="status" class="<?= $budget['status'] === 'aprovado' ? '' : 'hidden' ?> p-4 rounded-xl text-sm text-center bg-green-50 border border-green-200 text-green-800">
+                    <i class="fas fa-check-circle mr-1"></i> <strong>Orçamento aprovado</strong><span data-budget-decision-text-inline> <?= $budget['status'] === 'aprovado' ? Security::esc('em ' . UI::date($budget['data_autorizacao'] ?? null, true)) : '' ?></span>.
+                    Este link não aceita novas respostas. Para qualquer alteração, entre em contato com a empresa: somente um administrador pode reabrir o orçamento.
+                </div>
+                <div data-budget-decided-only data-for="rejeitado" role="status" class="<?= $budget['status'] === 'rejeitado' ? '' : 'hidden' ?> p-4 rounded-xl text-sm text-center bg-red-50 border border-red-200 text-red-800">
+                    <i class="fas fa-times-circle mr-1"></i> <strong>Orçamento rejeitado</strong><span data-budget-decision-text-inline> <?= $budget['status'] === 'rejeitado' ? Security::esc('em ' . UI::date($budget['data_rejeicao'] ?? null, true)) : '' ?></span>.
+                    Este link não aceita mais respostas: será necessário um novo orçamento ou a reabertura por um administrador.
                 </div>
                 <div data-budget-decided-only data-for="expirado" class="<?= $expirado ? '' : 'hidden' ?> p-4 rounded-xl text-sm text-center bg-gray-50 text-gray-700">
                     <i class="fas fa-hourglass-end mr-1"></i> Este orçamento expirou. Entre em contato com a empresa para solicitar a reativação.
                 </div>
+
+                <?php if (count($historico) > 1): ?>
+                    <div class="pt-4 border-t border-gray-200">
+                        <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Histórico deste orçamento</p>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <?php foreach ($historico as $evento): $info = UI::historyAction($evento['acao']); ?>
+                                <li><i class="fas <?= $info['icon'] ?> <?= $info['color'] ?> mr-1"></i> <?= Security::esc($info['label']) ?> em <?= UI::date($evento['created_at'], true) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <div class="bg-gray-50 px-6 py-4 text-center text-xs text-gray-500">
-                Sua resposta é registrada com data e hora e comunicada automaticamente ao responsável.
+            <div class="bg-gray-50 px-6 py-4 text-center text-xs text-gray-500 space-y-1">
+                <p>Ao responder, registramos data, hora, endereço IP e navegador como comprovação da sua decisão.</p>
+                <p>Tratamento de dados conforme a LGPD: <a href="<?= BASE_URL ?>/auth/privacidade" target="_blank" rel="noopener" class="underline hover:text-gray-700">Política de Privacidade</a>.</p>
             </div>
         </div>
     </div>

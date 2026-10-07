@@ -49,4 +49,43 @@ class UI {
         }
         return '';
     }
+
+    private const HISTORY_ACTIONS = [
+        'criado'      => ['label' => 'Orçamento criado',            'icon' => 'fa-plus-circle',  'color' => 'text-gray-500'],
+        'aprovado'    => ['label' => 'Aprovado',                    'icon' => 'fa-check-circle', 'color' => 'text-green-600'],
+        'rejeitado'   => ['label' => 'Rejeitado',                   'icon' => 'fa-times-circle', 'color' => 'text-red-600'],
+        'reaberto'    => ['label' => 'Reaberto pelo administrador', 'icon' => 'fa-unlock',       'color' => 'text-blue-600'],
+        'reativado'   => ['label' => 'Reativado após expirar',      'icon' => 'fa-redo',         'color' => 'text-blue-600'],
+        'expirado'    => ['label' => 'Expirado',                    'icon' => 'fa-hourglass-end','color' => 'text-gray-500'],
+        'nova_versao' => ['label' => 'Nova versão gerada',          'icon' => 'fa-copy',         'color' => 'text-indigo-600'],
+    ];
+
+    private const HISTORY_ORIGINS = [
+        'admin' => 'Administrador', 'tecnico' => 'Técnico', 'cliente' => 'Cliente (área logada)',
+        'link_publico' => 'Cliente (link público)', 'sistema' => 'Sistema',
+    ];
+
+    public static function historyAction($acao) {
+        return self::HISTORY_ACTIONS[$acao] ?? ['label' => ucfirst((string)$acao), 'icon' => 'fa-circle', 'color' => 'text-gray-500'];
+    }
+
+    public static function historyOrigin($origem) {
+        return self::HISTORY_ORIGINS[$origem] ?? ucfirst((string)$origem);
+    }
+
+    /**
+     * Minimização de dados em páginas públicas: "Maria da Silva Souza" -> "Maria S."
+     */
+    public static function maskName($name) {
+        $parts = preg_split('/\s+/u', trim((string)$name), -1, PREG_SPLIT_NO_EMPTY);
+        if (!$parts) {
+            return '';
+        }
+        if (count($parts) === 1) {
+            return $parts[0];
+        }
+        $last = end($parts);
+        $initial = function_exists('mb_substr') ? mb_strtoupper(mb_substr($last, 0, 1, 'UTF-8'), 'UTF-8') : strtoupper(substr($last, 0, 1));
+        return $parts[0] . ' ' . $initial . '.';
+    }
 }

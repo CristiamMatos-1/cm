@@ -3,6 +3,7 @@ namespace app\Models;
 
 use PDO;
 use Throwable;
+use app\Helpers\Audit;
 
 class OrcamentoModel extends Model {
 
@@ -115,7 +116,9 @@ class OrcamentoModel extends Model {
         $stmt->bindValue(':token', $token);
 
         if ($stmt->execute()) {
-            return $this->db->lastInsertId();
+            $newId = $this->db->lastInsertId();
+            $this->logHistory($newId, 'criado', null, self::STATUS_PENDENTE, null, $data['motivo_historico'] ?? null);
+            return $newId;
         }
         return false;
     }
@@ -157,8 +160,16 @@ class OrcamentoModel extends Model {
         return $stmt->execute($params);
     }
 
+    /**
+     * Orçamentos que já tiveram decisão (aprovado/rejeitado) nunca são excluídos:
+     * o registro é mantido como trilha de auditoria. Para refazer, reabra ou crie nova versão.
+     */
     public function deleteBudget($id) {
-        $stmt = $this->db->prepare("DELETE FROM budgets WHERE id = :id AND status != 'aprovado'");
+        if ($this->hasDecisionHistory($id)) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM budgets WHERE id = :id AND status NOT IN ('aprovado', 'rejeitado')");
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->rowCount() > 0;
@@ -177,7 +188,7 @@ class OrcamentoModel extends Model {
      * @return array ['ok' => bool, 'code' => string, 'message' => string, 'budget' => array|null]
      *   code: ok | not_found | invalid | already_decided | expired | error
      */
-    public function decide($id, $decision, $userId, $motivo = null) {
+    public function decide($id, $decision, $userId, $motivo = null, $origem = 'admin') {
         if (!in_array($decision, [self::DECISION_APPROVE, self::DECISION_REJECT], true)) {
             return $this->result(false, 'invalid', 'Ação inválida para o orçamento.');
         }
@@ -217,7 +228,7 @@ class OrcamentoModel extends Model {
                 if (!empty($quando)) {
                     $msg .= ' em ' . date('d/m/Y \à\s H:i', strtotime($quando));
                 }
-                return $this->result(false, 'already_decided', $msg . '. Não é possível alterar a decisão.', $this->getBudgetById($id));
+                return $this->result(false, 'already_decided', $msg . '. Somente um administrador pode reabrir o orçamento para uma nova resposta.', $this->getBudgetById($id));
             }
 
             if ($budget['status'] === self::STATUS_EXPIRADO || (int)$budget['vencido'] === 1) {
@@ -264,6 +275,16 @@ class OrcamentoModel extends Model {
                 return $this->result(false, 'error', 'Não foi possível registrar a decisão. Tente novamente.');
             }
 
+            $this->logHistory(
+                $id,
+                $decision === self::DECISION_APPROVE ? 'aprovado' : 'rejeitado',
+                self::STATUS_PENDENTE,
+                $decision === self::DECISION_APPROVE ? self::STATUS_APROVADO : self::STATUS_REJEITADO,
+                $userId,
+                $motivo,
+                $origem
+            );
+
             $this->db->commit();
 
             $updated = $this->getBudgetById($id);
@@ -291,18 +312,261 @@ class OrcamentoModel extends Model {
         ");
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->rowCount() > 0;
+
+        if ($stmt->rowCount() > 0) {
+            $this->logHistory($id, 'reativado', self::STATUS_EXPIRADO, self::STATUS_PENDENTE, null, 'Validade renovada por 30 dias');
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Reabre um orçamento já aprovado/rejeitado para uma nova resposta do cliente.
+     * Somente administradores devem chamar este método (a checagem é feita no controller).
+     *
+     * A decisão anterior NÃO é perdida: ela permanece no histórico (budget_history)
+     * com data, autor, origem e justificativa. Os campos "atuais" de decisão são limpos
+     * para que o link público volte a aceitar uma nova resposta.
+     *
+     * @return array ['ok' => bool, 'code' => string, 'message' => string, 'budget' => array|null]
+     */
+    public function reopen($id, $adminId, $motivo) {
+        $motivo = trim((string)$motivo);
+        if ($motivo === '') {
+            return $this->result(false, 'invalid', 'Informe a justificativa da reabertura.');
+        }
+        $motivo = function_exists('mb_substr') ? mb_substr($motivo, 0, 1000, 'UTF-8') : substr($motivo, 0, 1000);
+
+        try {
+            $this->db->beginTransaction();
+
+            $stmt = $this->db->prepare("SELECT id, status FROM budgets WHERE id = :id FOR UPDATE");
+            $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+            $stmt->execute();
+            $budget = $stmt->fetch();
+
+            if (!$budget) {
+                $this->db->rollBack();
+                return $this->result(false, 'not_found', 'Orçamento não encontrado.');
+            }
+
+            if (!in_array($budget['status'], [self::STATUS_APROVADO, self::STATUS_REJEITADO], true)) {
+                $this->db->rollBack();
+                return $this->result(false, 'invalid', 'Somente orçamentos aprovados ou rejeitados podem ser reabertos.', $this->getBudgetById($id));
+            }
+
+            $upd = $this->db->prepare("
+                UPDATE budgets SET
+                    status = 'pendente',
+                    autorizado_por = NULL,
+                    data_autorizacao = NULL,
+                    rejeitado_por = NULL,
+                    data_rejeicao = NULL,
+                    motivo_rejeicao = NULL,
+                    data_validade = IF(data_validade IS NULL OR data_validade < CURDATE(), DATE_ADD(CURDATE(), INTERVAL 30 DAY), data_validade)
+                WHERE id = :id AND status IN ('aprovado', 'rejeitado')
+            ");
+            $upd->bindValue(':id', (int)$id, PDO::PARAM_INT);
+            $upd->execute();
+
+            if ($upd->rowCount() !== 1) {
+                $this->db->rollBack();
+                return $this->result(false, 'error', 'Não foi possível reabrir o orçamento. Tente novamente.');
+            }
+
+            $this->logHistory($id, 'reaberto', $budget['status'], self::STATUS_PENDENTE, $adminId, $motivo, 'admin');
+            $this->db->commit();
+
+            return $this->result(true, 'ok', 'Orçamento reaberto. O registro da decisão anterior foi mantido no histórico.', $this->getBudgetById($id));
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('Erro ao reabrir orçamento #' . (int)$id . ': ' . $e->getMessage());
+            return $this->result(false, 'error', 'Erro interno ao reabrir o orçamento. Tente novamente.');
+        }
+    }
+
+    /**
+     * Cria um novo orçamento (novo token, status pendente) a partir de um existente,
+     * copiando dados e itens. O original permanece intacto com seu histórico.
+     *
+     * @return int|false id do novo orçamento
+     */
+    public function duplicateBudget($id) {
+        try {
+            $this->db->beginTransaction();
+
+            $stmt = $this->db->prepare("SELECT * FROM budgets WHERE id = :id FOR UPDATE");
+            $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+            $stmt->execute();
+            $orig = $stmt->fetch();
+
+            if (!$orig) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $sufixo = ' (nova versão)';
+            $titulo = function_exists('mb_substr') ? mb_substr($orig['titulo'], 0, 150 - strlen($sufixo), 'UTF-8') : substr($orig['titulo'], 0, 150 - strlen($sufixo));
+
+            $ins = $this->db->prepare("
+                INSERT INTO budgets (cliente_id, ticket_id, titulo, descricao, valor_total, valor_pecas, valor_mao_obra, data_validade, token_autorizacao)
+                VALUES (:cliente_id, :ticket_id, :titulo, :descricao, :valor_total, :valor_pecas, :valor_mao_obra, DATE_ADD(CURDATE(), INTERVAL 30 DAY), :token)
+            ");
+            $ins->bindValue(':cliente_id', (int)$orig['cliente_id'], PDO::PARAM_INT);
+            $ins->bindValue(':ticket_id', $orig['ticket_id'] !== null ? (int)$orig['ticket_id'] : null, PDO::PARAM_INT);
+            $ins->bindValue(':titulo', $titulo . $sufixo);
+            $ins->bindValue(':descricao', $orig['descricao']);
+            $ins->bindValue(':valor_total', $orig['valor_total']);
+            $ins->bindValue(':valor_pecas', $orig['valor_pecas']);
+            $ins->bindValue(':valor_mao_obra', $orig['valor_mao_obra']);
+            $ins->bindValue(':token', bin2hex(random_bytes(32)));
+            $ins->execute();
+            $newId = (int)$this->db->lastInsertId();
+
+            $items = $this->db->prepare("
+                INSERT INTO budget_items (budget_id, tipo, descricao, quantidade, valor_unitario, subtotal)
+                SELECT :new_id, tipo, descricao, quantidade, valor_unitario, subtotal FROM budget_items WHERE budget_id = :old_id
+            ");
+            $items->bindValue(':new_id', $newId, PDO::PARAM_INT);
+            $items->bindValue(':old_id', (int)$id, PDO::PARAM_INT);
+            $items->execute();
+
+            $this->logHistory($newId, 'criado', null, self::STATUS_PENDENTE, null, 'Nova versão do orçamento #' . (int)$id);
+            $this->logHistory($id, 'nova_versao', $orig['status'], $orig['status'], null, 'Gerado o novo orçamento #' . $newId);
+
+            $this->db->commit();
+            return $newId;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('Erro ao duplicar orçamento #' . (int)$id . ': ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
      * Apenas orçamentos pendentes expiram; decisões já tomadas são preservadas.
      */
     public function checkExpiredBudgets() {
-        $stmt = $this->db->prepare("
-            UPDATE budgets SET status = 'expirado'
-            WHERE status = 'pendente' AND data_validade IS NOT NULL AND data_validade < CURDATE()
-        ");
-        return $stmt->execute();
+        try {
+            $this->db->beginTransaction();
+
+            try {
+                $this->db->exec("
+                    INSERT INTO budget_history (budget_id, acao, status_anterior, status_novo, origem, motivo)
+                    SELECT id, 'expirado', 'pendente', 'expirado', 'sistema', 'Validade vencida'
+                    FROM budgets
+                    WHERE status = 'pendente' AND data_validade IS NOT NULL AND data_validade < CURDATE()
+                ");
+            } catch (Throwable $e) {
+                error_log('Histórico de orçamentos indisponível (execute a migração do banco): ' . $e->getMessage());
+            }
+
+            $this->db->exec("
+                UPDATE budgets SET status = 'expirado'
+                WHERE status = 'pendente' AND data_validade IS NOT NULL AND data_validade < CURDATE()
+            ");
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log('Erro ao expirar orçamentos: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ==========================================
+    // HISTÓRICO / AUDITORIA
+    // ==========================================
+
+    private function sessionOrigin() {
+        $type = $_SESSION['user_type'] ?? null;
+        return in_array($type, ['admin', 'tecnico', 'cliente'], true) ? $type : 'sistema';
+    }
+
+    /**
+     * Registra um evento na trilha de auditoria do orçamento. Nunca interrompe o fluxo
+     * principal: se a tabela ainda não existir (migração pendente), apenas registra no log.
+     */
+    private function logHistory($budgetId, $acao, $anterior, $novo, $userId = null, $motivo = null, $origem = null) {
+        try {
+            if ($userId === null && isset($_SESSION['user_id'])) {
+                $userId = $_SESSION['user_id'];
+            }
+            $stmt = $this->db->prepare("
+                INSERT INTO budget_history (budget_id, acao, status_anterior, status_novo, usuario_id, origem, motivo, ip_address, user_agent)
+                VALUES (:budget_id, :acao, :anterior, :novo, :usuario_id, :origem, :motivo, :ip, :ua)
+            ");
+            $stmt->bindValue(':budget_id', (int)$budgetId, PDO::PARAM_INT);
+            $stmt->bindValue(':acao', $acao);
+            $stmt->bindValue(':anterior', $anterior);
+            $stmt->bindValue(':novo', $novo);
+            $stmt->bindValue(':usuario_id', $userId !== null ? (int)$userId : null, PDO::PARAM_INT);
+            $stmt->bindValue(':origem', $origem ?: $this->sessionOrigin());
+            $stmt->bindValue(':motivo', $motivo);
+            $stmt->bindValue(':ip', Audit::clientIp());
+            $stmt->bindValue(':ua', Audit::userAgent());
+            $stmt->execute();
+        } catch (Throwable $e) {
+            error_log('Não foi possível registrar o histórico do orçamento #' . (int)$budgetId . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Linha do tempo completa (uso administrativo). Inclui autor, origem, IP e justificativa.
+     */
+    public function getHistory($budgetId) {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT h.*, u.nome AS usuario_nome
+                FROM budget_history h
+                LEFT JOIN users u ON u.id = h.usuario_id
+                WHERE h.budget_id = :id
+                ORDER BY h.created_at ASC, h.id ASC
+            ");
+            $stmt->bindValue(':id', (int)$budgetId, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (Throwable $e) {
+            error_log('Histórico de orçamentos indisponível: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Linha do tempo para o link público: apenas ação e data (sem autor, IP ou justificativa).
+     */
+    public function getPublicHistory($budgetId) {
+        return array_map(function ($row) {
+            return ['acao' => $row['acao'], 'created_at' => $row['created_at']];
+        }, array_values(array_filter($this->getHistory($budgetId), function ($row) {
+            return in_array($row['acao'], ['aprovado', 'rejeitado', 'reaberto', 'reativado', 'expirado'], true);
+        })));
+    }
+
+    public function hasDecisionHistory($budgetId) {
+        $stmt = $this->db->prepare("SELECT status FROM budgets WHERE id = :id");
+        $stmt->bindValue(':id', (int)$budgetId, PDO::PARAM_INT);
+        $stmt->execute();
+        $status = $stmt->fetchColumn();
+        if (in_array($status, [self::STATUS_APROVADO, self::STATUS_REJEITADO], true)) {
+            return true;
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM budget_history WHERE budget_id = :id AND acao IN ('aprovado', 'rejeitado')");
+            $stmt->bindValue(':id', (int)$budgetId, PDO::PARAM_INT);
+            $stmt->execute();
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (Throwable $e) {
+            return false;
+        }
     }
 
     // ==========================================
