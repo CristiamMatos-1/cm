@@ -6,6 +6,9 @@ RewriteBase /cm/
 # Nunca executa scripts enviados para a pasta de uploads
 RewriteRule ^uploads/.*\.(php[0-9]?|phtml|phar)$ - [F,NC,L]
 
+# Arquivos privados (NF, anexos de chamados) só são entregues pelo ArquivoController, após checar permissão (LGPD)
+RewriteRule ^uploads/(invoices|tickets)/ - [F,NC,L]
+
 # Bloqueia acesso direto a código-fonte e arquivos de infraestrutura
 RewriteRule ^app/ - [F,L]
 RewriteRule ^database/ - [F,L]
