@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
@@ -50,8 +52,13 @@ jobs:
               set ssl:verify-certificate no;
               set ftp:ssl-allow no;
               mirror -R --delete --verbose \
-                --exclude-glob .git* \
-                --exclude-glob .github \
+                --exclude-glob .git/ \
+                --exclude-glob .github/ \
+                --exclude-glob .gitignore \
+                --exclude-glob .cpanel.yml \
+                --exclude-glob database/ \
+                --exclude-glob database.sql \
+                --exclude-glob README.md \
                 --exclude-glob error_log \
                 --exclude-glob '*.zip' \
                 --exclude uploads/* \
