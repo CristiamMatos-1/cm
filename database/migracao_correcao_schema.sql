@@ -18,7 +18,8 @@
 --   * budgets: colunas v2 (valor_total, validade, token, rejeição),
 --     renomeia valor -> valor_total se ainda for o schema antigo
 --   * tabelas ausentes: budget_items, avulso_services,
---     projetos_software, financeiro_contabil (e demais, se faltarem)
+--     projetos_software, financeiro_contabil, admin_logs (e demais, se faltarem)
+--   * índices da Visão Geral (tickets, budgets, financeiro_contabil, users)
 --   * gera token de autorização para orçamentos antigos sem token
 -- =====================================================================
 
@@ -240,6 +241,20 @@ CREATE TABLE IF NOT EXISTS financeiro_contabil (
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Tabela de Logs Administrativos (auditoria das ações críticas - Visão Geral)
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    user_name VARCHAR(150) NOT NULL DEFAULT 'Sistema', -- cópia do nome: o log sobrevive à exclusão do usuário
+    acao VARCHAR(60) NOT NULL,
+    entidade VARCHAR(60) NULL,
+    entidade_id INT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    nivel ENUM('info', 'aviso', 'critico') NOT NULL DEFAULT 'info',
+    ip VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- ---------------------------------------------------------------------
 -- 2. users
 -- ---------------------------------------------------------------------
@@ -350,7 +365,24 @@ UPDATE `budgets` SET `titulo` = CONCAT('Orçamento #', id) WHERE `titulo` IS NUL
 UPDATE `budgets` SET `token_autorizacao` = SHA2(CONCAT(id, UUID(), RAND()), 256) WHERE `token_autorizacao` IS NULL OR `token_autorizacao` = '';
 
 -- ---------------------------------------------------------------------
--- 6. OPCIONAL - recuperar orçamentos aprovados que o sistema antigo
+-- 6. Índices usados pela Visão Geral (dashboard do administrador)
+--    Só cria o índice se ele ainda não existir.
+-- ---------------------------------------------------------------------
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `tickets` ADD INDEX `idx_tickets_status_updated` (`status`, `updated_at`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tickets' AND INDEX_NAME = 'idx_tickets_status_updated');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `tickets` ADD INDEX `idx_tickets_created_at` (`created_at`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tickets' AND INDEX_NAME = 'idx_tickets_created_at');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `budgets` ADD INDEX `idx_budgets_status` (`status`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'budgets' AND INDEX_NAME = 'idx_budgets_status');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `financeiro_contabil` ADD INDEX `idx_fin_status_tipo_venc` (`status`, `tipo`, `data_vencimento`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'financeiro_contabil' AND INDEX_NAME = 'idx_fin_status_tipo_venc');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `financeiro_contabil` ADD INDEX `idx_fin_status_pagto` (`status`, `data_pagamento`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'financeiro_contabil' AND INDEX_NAME = 'idx_fin_status_pagto');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s := (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD INDEX `idx_users_perfil_created` (`perfil`, `created_at`)', 'DO 0') FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME = 'idx_users_perfil_created');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------------------------------------------------------------------
+-- 7. OPCIONAL - recuperar orçamentos aprovados que o sistema antigo
 --    marcou como 'expirado' por engano (bug corrigido nesta versão).
 --    Rode primeiro o SELECT para conferir; se a lista estiver correta,
 --    remova o '-- ' do UPDATE e execute.

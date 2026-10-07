@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
     cidade VARCHAR(100) NULL,
     estado VARCHAR(2) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_users_perfil_created (perfil, created_at)
 ) ENGINE=InnoDB;
 
 -- Tabela de Configurações da Empresa (Módulo 5)
@@ -119,7 +120,9 @@ CREATE TABLE IF NOT EXISTS tickets (
     FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (tecnico_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (programador_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (engenheiro_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (engenheiro_id) REFERENCES users(id) ON DELETE SET NULL,
+    KEY idx_tickets_status_updated (status, updated_at),
+    KEY idx_tickets_created_at (created_at)
 ) ENGINE=InnoDB;
 
 -- Tabela de Mídias de Chamados (Fotos/Vídeos)
@@ -157,7 +160,8 @@ CREATE TABLE IF NOT EXISTS budgets (
     FOREIGN KEY (cliente_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL,
     FOREIGN KEY (autorizado_por) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (rejeitado_por) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (rejeitado_por) REFERENCES users(id) ON DELETE SET NULL,
+    KEY idx_budgets_status (status)
 ) ENGINE=InnoDB;
 
 -- Tabela de Itens de Orçamento (Peças e Mão de Obra)
@@ -220,5 +224,21 @@ CREATE TABLE IF NOT EXISTS financeiro_contabil (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_fornecedor_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL,
+    KEY idx_fin_status_tipo_venc (status, tipo, data_vencimento),
+    KEY idx_fin_status_pagto (status, data_pagamento)
+) ENGINE=InnoDB;
+
+-- Tabela de Logs Administrativos (auditoria das ações críticas - Visão Geral)
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    user_name VARCHAR(150) NOT NULL DEFAULT 'Sistema', -- cópia do nome: o log sobrevive à exclusão do usuário
+    acao VARCHAR(60) NOT NULL,
+    entidade VARCHAR(60) NULL,
+    entidade_id INT NULL,
+    descricao VARCHAR(255) NOT NULL,
+    nivel ENUM('info', 'aviso', 'critico') NOT NULL DEFAULT 'info',
+    ip VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
