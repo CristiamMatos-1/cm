@@ -41,7 +41,7 @@ Observações para evitar erro 404:
 | Instalação nova (banco vazio) | `database.sql` | phpMyAdmin > selecionar o banco > Importar |
 | Sistema já em produção | `database/migracao_correcao_schema.sql` | **Backup** > phpMyAdmin > selecionar o banco > Importar |
 
-A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`). Orçamentos antigos sem token ganham um token de autorização.
+A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`, `admin_logs`) e os índices usados pela Visão Geral. Orçamentos antigos sem token ganham um token de autorização.
 
 ## Deploy pelo cPanel (Git Version Control)
 
@@ -101,12 +101,13 @@ CREATE TABLE avulso_services (
 
 ### 📊 Dashboard Estatístico
 
-- **Nova página de dashboard** em `/admin/dashboard`
-- **Gráficos interativos** com Chart.js
-- **KPIs principais**: Chamados, Orçamentos, Serviços Avulsos, Clientes
-- **Resumo Financeiro**: Total de receitas, contratos, notas fiscais
-- **Atividades Recentes**: Chamados, orçamentos e aprovações pendentes
-- **Estatísticas por Status**: Visualização de orçamentos por status
+- **Visão Geral do administrador** em `/admin` (e `/admin/dashboard`), restrita ao perfil `admin`
+- **KPIs**: Chamados (total/abertos/andamento/encerrados), Orçamentos (emitidos/pendentes/aceitos/rejeitados), Financeiro (a receber, a pagar, saldo geral e faturamento do mês) e Administração (clientes, novos registros, status do sistema)
+- **Gráficos (Chart.js)**: chamados abertos x encerrados (30 dias, linhas/barras), conversão de orçamentos (donut) e fluxo de caixa (6 meses)
+- **Tabelas**: últimos chamados, próximos vencimentos financeiros (7 dias) e logs administrativos
+- **Logs administrativos**: tabela `admin_logs`, gravada por `AuditLogModel::record()` em ações críticas (exclusões, decisões de orçamento, usuários, lançamentos, logins de funcionários)
+- **Performance**: consultas com agregação condicional, filtros de data por intervalo e índices (ver migração); a fonte financeira é `financeiro_contabil`
+- **Definições**: "encerrado" = `finalizado` + `rejeitado`; "em andamento" = `andamento`, `em_analise`, `em_execucao`, `esperando_peca`; conversão = aceitos / (aceitos + rejeitados); o uptime só aparece se o host permitir ler `/proc/uptime`
 
 ### 💰 Orçamentos com Aprovação via WhatsApp
 
@@ -118,7 +119,7 @@ CREATE TABLE avulso_services (
 - **Reativação manual** pelo administrador se necessário
 
 **Endpoints:**
-- `GET /admin/dashboard` - Visualizar dashboard
+- `GET /admin` ou `GET /admin/dashboard` - Visão Geral do administrador
 - `GET /admin/imprimirOrcamentoNovo/{id}` - Imprimir orçamento (novo formato com itens)
 - `POST /admin/adicionarItemOrcamento` - Adicionar item ao orçamento
 - `POST /admin/removerItemOrcamento/{item_id}` - Remover item do orçamento (CSRF)
@@ -162,14 +163,12 @@ CREATE TABLE avulso_services (
 ### 📝 Novos Modelos
 
 **DashboardModel.php**
-- `getTicketStats()` - Estatísticas de chamados por status
-- `getBudgetStats()` - Estatísticas de orçamentos
-- `getAvulsoServiceStats()` - Estatísticas de serviços avulsos
-- `getClientStats()` - Total de clientes cadastrados
-- `getFinancialSummary()` - Resumo financeiro
-- `getTicketsByClientChart()` - Dados para gráfico de chamados por cliente
-- `getBudgetsByStatusChart()` - Dados para gráfico de status de orçamentos
-- `getPendingApprovals()` - Orçamentos aguardando aprovação
+- `getTicketKpis()`, `getBudgetKpis()`, `getFinanceKpis()`, `getUserKpis()`, `getSystemStatus()` - Cards de resumo
+- `getTicketFlow()`, `getCashFlow()` - Séries dos gráficos
+- `getRecentTickets()`, `getUpcomingDues()`, `getRecentAdminLogs()` - Tabelas de atividade recente
+
+**AuditLogModel.php**
+- `AuditLogModel::record($acao, $descricao, $entidade, $entidadeId, $nivel)` - Grava em `admin_logs` sem interromper o fluxo em caso de falha
 
 **AvulsoServiceModel.php**
 - CRUD completo para serviços avulsos
@@ -202,7 +201,7 @@ CREATE TABLE avulso_services (
 
 ### 📄 Novas Views
 
-- `admin/dashboard.php` - Dashboard com gráficos e KPIs
+- `admin/dashboard.php` - Visão Geral (Tailwind + Chart.js) com KPIs, gráficos e tabelas
 - `admin/imprimir_orcamento.php` - Impressão profissional com logo da empresa
 - `auth/autorizar_orcamento.php` - Página de autorização via link
 - `auth/sucesso.php` - Confirmação de sucesso
@@ -277,7 +276,7 @@ CREATE TABLE avulso_services (
 
 **Passo 2:** Fazer deploy do código
 
-**Passo 3:** Acessar `/admin/dashboard` para visualizar o novo painel
+**Passo 3:** Acessar `/admin` (Visão Geral) para visualizar o novo painel
 
 ### 🚀 Próximas Melhorias
 

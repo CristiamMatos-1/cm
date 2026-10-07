@@ -11,6 +11,7 @@ use app\Models\AvulsoServiceModel;
 use app\Models\ReportModel;
 use app\Models\ContabilModel;
 use app\Models\ProjetoModel;
+use app\Models\AuditLogModel;
 use app\Helpers\Security;
 use app\Helpers\UploadHelper;
 
@@ -167,7 +168,9 @@ class AdminController extends Controller {
     public function excluirChamado($id) {
         $this->requirePost();
         $chamadoModel = new ChamadoModel();
-        $chamadoModel->deleteTicket($id);
+        if ($chamadoModel->deleteTicket($id)) {
+            AuditLogModel::record('chamado_excluido', 'Chamado #' . (int)$id . ' excluído', 'ticket', $id, AuditLogModel::NIVEL_CRITICO);
+        }
         $this->flash('success', 'Chamado excluído com sucesso.');
         $this->redirect('/admin/chamados');
     }
@@ -229,7 +232,14 @@ class AdminController extends Controller {
         }
 
         $userModel = new UserModel();
-        $userModel->deleteUser($id);
+        $alvo = $userModel->getUserById($id);
+        if ($userModel->deleteUser($id) && $alvo) {
+            AuditLogModel::record(
+                'usuario_excluido',
+                'Usuário "' . $alvo['nome'] . '" (#' . (int)$id . ', perfil ' . $alvo['perfil'] . ') excluído',
+                'user', $id, AuditLogModel::NIVEL_CRITICO
+            );
+        }
         $this->flash('success', 'Usuário excluído com sucesso.');
 
         $this->redirect('/admin/usuarios');
@@ -472,6 +482,11 @@ class AdminController extends Controller {
         } elseif ($orcamento['status'] === 'aprovado') {
             $this->flash('error', 'Orçamentos aprovados não podem ser excluídos.');
         } elseif ($orcamentoModel->deleteBudget($id)) {
+            AuditLogModel::record(
+                'orcamento_excluido',
+                'Orçamento #' . (int)$id . ' ("' . $orcamento['titulo'] . '", ' . \app\Helpers\UI::money($orcamento['valor_total']) . ') excluído',
+                'budget', $id, AuditLogModel::NIVEL_CRITICO
+            );
             $this->flash('success', 'Orçamento excluído com sucesso.');
         } else {
             $this->flash('error', 'Não foi possível excluir o orçamento.');
@@ -502,6 +517,15 @@ class AdminController extends Controller {
         $orcamentoModel = new OrcamentoModel();
         $resultado = $orcamentoModel->decide($id, $decision, $_SESSION['user_id'], $motivo);
 
+        if (!empty($resultado['ok'])) {
+            $aprovado = $decision === OrcamentoModel::DECISION_APPROVE;
+            AuditLogModel::record(
+                $aprovado ? 'orcamento_aprovado' : 'orcamento_rejeitado',
+                'Orçamento #' . (int)$id . ($aprovado ? ' aprovado' : ' rejeitado') . ' pelo administrador',
+                'budget', $id, AuditLogModel::NIVEL_INFO
+            );
+        }
+
         if ($this->isAjax()) {
             $this->respondBudgetDecision($resultado);
         }
@@ -515,6 +539,7 @@ class AdminController extends Controller {
 
         $orcamentoModel = new OrcamentoModel();
         if ($orcamentoModel->reactivateBudget($id)) {
+            AuditLogModel::record('orcamento_reativado', 'Orçamento #' . (int)$id . ' reativado', 'budget', $id);
             $this->flash('success', 'Orçamento reativado por mais 30 dias.');
         } else {
             $this->flash('warning', 'Apenas orçamentos expirados podem ser reativados.');
@@ -608,6 +633,12 @@ class AdminController extends Controller {
             die("Erro crítico ao tentar salvar o usuário no banco de dados. Verifique as configurações das colunas ou se faltou algum campo.");
         }
 
+        AuditLogModel::record(
+            'usuario_criado',
+            'Funcionário "' . $dados['nome'] . '" criado com perfil ' . $dados['perfil'],
+            'user', null, AuditLogModel::NIVEL_AVISO
+        );
+
         $this->redirect('/admin/usuarios');
     }
 
@@ -682,17 +713,27 @@ class AdminController extends Controller {
 
         $userModel->updateUsuario($id, $dados);
 
+        $mudancas = [];
+        if ($usuarioAtual['perfil'] !== $dados['perfil']) {
+            $mudancas[] = 'perfil ' . $usuarioAtual['perfil'] . ' → ' . $dados['perfil'];
+        }
+        if (!empty($dados['senha_hash'])) {
+            $mudancas[] = 'senha redefinida';
+        }
+        if (($usuarioAtual['permissoes'] ?? '[]') !== $dados['permissoes']) {
+            $mudancas[] = 'permissões alteradas';
+        }
+        AuditLogModel::record(
+            'usuario_editado',
+            'Funcionário "' . $usuarioAtual['nome'] . '" (#' . (int)$id . ') atualizado' . ($mudancas ? ': ' . implode(', ', $mudancas) : ''),
+            'user', $id, $mudancas ? AuditLogModel::NIVEL_AVISO : AuditLogModel::NIVEL_INFO
+        );
+
         $this->redirect('/admin/usuarios');
     }
 
     public function index() {
-        $chamadoModel = new ChamadoModel();
-        $totalChamados = $chamadoModel->countAll();
-
-        $this->view('dashboard/admin', [
-            'title' => 'Visão Geral - Admin',
-            'totalChamados' => $totalChamados
-        ]);
+        return (new DashboardController())->index();
     }
 
     // ==========================================
@@ -884,7 +925,13 @@ class AdminController extends Controller {
         ];
 
         $contabilModel = new ContabilModel();
-        $contabilModel->criarLancamento($dados);
+        if ($contabilModel->criarLancamento($dados)) {
+            AuditLogModel::record(
+                'lancamento_criado',
+                'Lançamento ' . $dados['tipo'] . ' "' . $dados['descricao'] . '" de ' . \app\Helpers\UI::money($dados['valor']) . ' criado',
+                'financeiro_contabil', null, AuditLogModel::NIVEL_INFO
+            );
+        }
 
         $this->redirect('/admin/contabil');
     }
@@ -896,7 +943,9 @@ class AdminController extends Controller {
         $data_pagamento = ($status === 'pago') ? date('Y-m-d') : null;
 
         $contabilModel = new ContabilModel();
-        $contabilModel->atualizarStatus($id, $status, $data_pagamento);
+        if ($contabilModel->atualizarStatus($id, $status, $data_pagamento)) {
+            AuditLogModel::record('lancamento_status', 'Lançamento #' . (int)$id . ' marcado como ' . $status, 'financeiro_contabil', $id);
+        }
 
         $this->redirect('/admin/contabil');
     }
@@ -1096,8 +1145,7 @@ class AdminController extends Controller {
 
     // ==================== Dashboard ====================
     public function dashboard() {
-        $dashboardController = new DashboardController();
-        return $dashboardController->index();
+        return $this->index();
     }
 
     // ==================== Budget Items Management ====================
@@ -1290,7 +1338,9 @@ class AdminController extends Controller {
     public function excluirServicoAvulso($id) {
         $this->requirePost();
         $avulsoModel = new AvulsoServiceModel();
-        $avulsoModel->deleteService($id);
+        if ($avulsoModel->deleteService($id)) {
+            AuditLogModel::record('servico_avulso_excluido', 'Serviço avulso #' . (int)$id . ' excluído', 'avulso_services', $id, AuditLogModel::NIVEL_CRITICO);
+        }
         $_SESSION['success'] = 'Serviço avulso excluído com sucesso!';
         $this->redirect('/admin/servicosAvulsos');
     }

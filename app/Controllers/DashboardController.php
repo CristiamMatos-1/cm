@@ -2,9 +2,23 @@
 namespace app\Controllers;
 
 use app\Models\DashboardModel;
-use app\Models\UserModel;
 
+/**
+ * Visão Geral do administrador (rotas /admin, /admin/dashboard e /dashboard).
+ *
+ * O controller só orquestra: toda a SQL fica em DashboardModel e a apresentação em
+ * app/Views/admin/dashboard.php. Para acrescentar um novo indicador:
+ *   1. crie o método no DashboardModel;
+ *   2. chame-o aqui e envie o resultado em $this->view([...]);
+ *   3. renderize na view (cada bloco tem um comentário "DADOS DINÂMICOS").
+ */
 class DashboardController extends Controller {
+
+    private const PERIODO_GRAFICO_CHAMADOS_DIAS = 30;
+    private const PERIODO_FLUXO_CAIXA_MESES = 6;
+    private const PERIODO_NOVOS_REGISTROS_DIAS = 30;
+    private const VENCIMENTOS_PROXIMOS_DIAS = 7;
+    private const LINHAS_TABELAS = 8;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
@@ -16,45 +30,42 @@ class DashboardController extends Controller {
             $this->redirect('/client');
             exit;
         }
+
+        // O painel mostra dados financeiros e de auditoria: restrito a administradores.
+        if ($_SESSION['user_type'] !== 'admin') {
+            $this->redirect('/tech');
+            exit;
+        }
     }
 
     public function index() {
-        $dashboardModel = new DashboardModel();
-        
-        // Atualizar orçamentos expirados
-        $dashboardModel->checkExpiredBudgets();
+        $model = new DashboardModel();
 
-        // Obter estatísticas
-        $ticketStats = $dashboardModel->getTicketStats();
-        $budgetStats = $dashboardModel->getBudgetStats();
-        $avulsoStats = $dashboardModel->getAvulsoServiceStats();
-        $clientCount = $dashboardModel->getClientStats();
-        $contractStats = $dashboardModel->getContractStats();
-        $invoiceStats = $dashboardModel->getInvoiceStats();
-        $financialSummary = $dashboardModel->getFinancialSummary();
+        $model->checkExpiredBudgets();
 
-        // Gráficos
-        $ticketsByClient = $dashboardModel->getTicketsByClientChart();
-        $budgetsByStatus = $dashboardModel->getBudgetsByStatusChart();
-
-        // Atividades recentes
-        $recentTickets = $dashboardModel->getRecentTickets(5);
-        $recentBudgets = $dashboardModel->getRecentBudgets(5);
-        $pendingApprovals = $dashboardModel->getPendingApprovals(5);
+        // O fluxo de caixa é calculado antes porque o KPI financeiro reaproveita o mês corrente dele.
+        $fluxoCaixa = $model->getCashFlow(self::PERIODO_FLUXO_CAIXA_MESES);
 
         return $this->view('admin/dashboard', [
-            'ticketStats' => $ticketStats,
-            'budgetStats' => $budgetStats,
-            'avulsoStats' => $avulsoStats,
-            'clientCount' => $clientCount,
-            'contractStats' => $contractStats,
-            'invoiceStats' => $invoiceStats,
-            'financialSummary' => $financialSummary,
-            'ticketsByClient' => $ticketsByClient,
-            'budgetsByStatus' => $budgetsByStatus,
-            'recentTickets' => $recentTickets,
-            'recentBudgets' => $recentBudgets,
-            'pendingApprovals' => $pendingApprovals,
+            'title'          => 'Visão Geral',
+
+            // KPIs
+            'ticketKpis'     => $model->getTicketKpis(),
+            'budgetKpis'     => $model->getBudgetKpis(),
+            'financeKpis'    => $model->getFinanceKpis($fluxoCaixa),
+            'userKpis'       => $model->getUserKpis(self::PERIODO_NOVOS_REGISTROS_DIAS),
+            'systemStatus'   => $model->getSystemStatus(),
+
+            // Gráficos
+            'ticketFlow'     => $model->getTicketFlow(self::PERIODO_GRAFICO_CHAMADOS_DIAS),
+            'cashFlow'       => $fluxoCaixa,
+
+            // Tabelas
+            'recentTickets'  => $model->getRecentTickets(self::LINHAS_TABELAS),
+            'upcomingDues'   => $model->getUpcomingDues(self::VENCIMENTOS_PROXIMOS_DIAS, self::LINHAS_TABELAS + 2),
+            'adminLogs'      => $model->getRecentAdminLogs(self::LINHAS_TABELAS),
+
+            'diasProximosVencimentos' => self::VENCIMENTOS_PROXIMOS_DIAS,
         ]);
     }
 }

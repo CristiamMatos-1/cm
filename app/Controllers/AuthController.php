@@ -2,6 +2,7 @@
 namespace app\Controllers;
 
 use app\Models\UserModel;
+use app\Models\AuditLogModel;
 use app\Helpers\Security;
 
 class AuthController extends Controller {
@@ -34,8 +35,20 @@ class AuthController extends Controller {
             $_SESSION['user_name'] = $user['nome'];
             $_SESSION['user_type'] = $user['perfil'];
 
+            if ($user['perfil'] !== 'cliente') {
+                AuditLogModel::record('login', 'Login realizado (' . $user['perfil'] . ')', 'user', $user['id']);
+            }
+
             $this->redirectDashboard($user['perfil']);
         } else {
+            if ($user && $user['perfil'] !== 'cliente') {
+                AuditLogModel::record(
+                    'login_falhou',
+                    'Tentativa de login com senha incorreta na conta de "' . $user['nome'] . '" (' . $user['perfil'] . ')',
+                    'user', $user['id'], AuditLogModel::NIVEL_AVISO,
+                    ['id' => $user['id'], 'nome' => $user['nome']]
+                );
+            }
             // Credenciais inválidas
             $this->view('auth/login', [
                 'csrf_token' => Security::generateCsrfToken(),
