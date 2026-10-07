@@ -26,7 +26,7 @@ class AuthController extends Controller {
         $userModel = new UserModel();
         $user = $userModel->getUserByCpfCnpj($cpf_cnpj);
 
-        if ($user && password_verify($senha, $user['senha'])) {
+        if ($user && empty($user['anonimizado_em']) && password_verify($senha, $user['senha'])) {
             // Prevenção de Fixation de Sessão
             session_regenerate_id(true);
 
@@ -61,6 +61,14 @@ class AuthController extends Controller {
             $this->view('auth/login', [
                 'csrf_token' => Security::generateCsrfToken(),
                 'error' => 'Por favor, preencha todos os campos obrigatórios.'
+            ]);
+            return;
+        }
+
+        if (empty($_POST['reg_aceite_privacidade'])) {
+            $this->view('auth/login', [
+                'csrf_token' => Security::generateCsrfToken(),
+                'error' => 'Para criar a conta, é necessário ler e aceitar a Política de Privacidade.'
             ]);
             return;
         }
@@ -109,6 +117,24 @@ class AuthController extends Controller {
                 'error' => 'Erro ao realizar cadastro. Tente novamente.'
             ]);
         }
+    }
+
+    /**
+     * Política de Privacidade (pública, LGPD art. 9º e 23).
+     */
+    public function privacidade() {
+        $empresa = [];
+        try {
+            $empresa = (new \app\Models\ConfigModel())->getCompanyInfo() ?: [];
+        } catch (\Throwable $e) {
+            error_log('Política de privacidade: dados da empresa indisponíveis: ' . $e->getMessage());
+        }
+
+        $this->view('auth/privacidade', [
+            'empresa' => $empresa,
+            'versao' => \app\Helpers\Lgpd::VERSAO_POLITICA,
+            'logado' => isset($_SESSION['user_id'])
+        ]);
     }
 
     public function logout() {

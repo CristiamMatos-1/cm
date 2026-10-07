@@ -47,11 +47,11 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <?php foreach ($midias as $media): ?>
                     <?php if ($media['tipo'] === 'imagem'): ?>
-                        <a href="<?= BASE_URL ?>/<?= $media['file_url'] ?>" target="_blank" class="block border rounded p-1 hover:border-corpBlue-500 transition-colors">
-                            <img src="<?= BASE_URL ?>/<?= $media['file_url'] ?>" alt="Anexo" class="w-full h-32 object-cover rounded">
+                        <a href="<?= BASE_URL ?>/arquivo/midia/<?= (int)$media['id'] ?>" target="_blank" class="block border rounded p-1 hover:border-corpBlue-500 transition-colors">
+                            <img src="<?= BASE_URL ?>/arquivo/midia/<?= (int)$media['id'] ?>" alt="Anexo" class="w-full h-32 object-cover rounded">
                         </a>
                     <?php else: ?>
-                        <a href="<?= BASE_URL ?>/<?= $media['file_url'] ?>" target="_blank" class="flex flex-col items-center justify-center border rounded p-4 h-32 hover:border-corpBlue-500 transition-colors bg-gray-50">
+                        <a href="<?= BASE_URL ?>/arquivo/midia/<?= (int)$media['id'] ?>" target="_blank" class="flex flex-col items-center justify-center border rounded p-4 h-32 hover:border-corpBlue-500 transition-colors bg-gray-50">
                             <i class="fas fa-video text-3xl text-gray-400 mb-2"></i>
                             <span class="text-xs text-gray-500 text-center">Ver Vídeo</span>
                         </a>

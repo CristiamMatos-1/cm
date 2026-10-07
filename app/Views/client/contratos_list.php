@@ -66,7 +66,7 @@
                             <td class="px-6 py-4 text-sm text-gray-600"><?= date('d/m/Y', strtotime($n['data_emissao'])) ?></td>
                             <td class="px-6 py-4 text-sm text-gray-600">R$ <?= number_format($n['valor'], 2, ',', '.') ?></td>
                             <td class="px-6 py-4 text-right text-sm">
-                                <a href="<?= BASE_URL ?>/<?= $n['arquivo_url'] ?>" target="_blank" class="inline-flex items-center text-corpBlue-600 hover:text-corpBlue-900 bg-blue-50 px-3 py-1 rounded transition-colors">
+                                <a href="<?= BASE_URL ?>/arquivo/nota/<?= (int)$n['id'] ?>" target="_blank" class="inline-flex items-center text-corpBlue-600 hover:text-corpBlue-900 bg-blue-50 px-3 py-1 rounded transition-colors">
                                     <i class="fas fa-download mr-1"></i> Baixar
                                 </a>
                             </td>

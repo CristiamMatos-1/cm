@@ -18,6 +18,71 @@ class ClientController extends Controller {
     }
 
     // ==========================================
+    // PRIVACIDADE (LGPD - DIREITOS DO TITULAR)
+    // ==========================================
+
+    public function privacidade() {
+        $userModel = new \app\Models\UserModel();
+        $lgpdModel = new \app\Models\LgpdModel();
+
+        $this->view('client/privacidade', [
+            'title' => 'Privacidade (LGPD)',
+            'usuario' => $userModel->getUserById($_SESSION['user_id']),
+            'solicitacoes' => $lgpdModel->getRequestsByUser($_SESSION['user_id']),
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function exportarMeusDados() {
+        $this->requirePost();
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        $dados = $lgpdModel->exportUserData($_SESSION['user_id']);
+
+        if (!$dados) {
+            $this->flash('error', 'Não foi possível gerar a exportação dos seus dados.');
+            $this->redirect('/client/privacidade');
+        }
+
+        \app\Helpers\Audit::log('lgpd_exportacao_titular', 'user', (int)$_SESSION['user_id']);
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="meus-dados-' . date('Ymd-His') . '.json"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        echo json_encode($dados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    public function solicitarPrivacidade() {
+        $this->requirePost();
+
+        $tipo = (string)($_POST['tipo'] ?? '');
+        $mensagem = Security::sanitizeInput($_POST['mensagem'] ?? '');
+
+        if (!isset(\app\Helpers\Lgpd::TIPOS_SOLICITACAO[$tipo])) {
+            $this->flash('error', 'Selecione o tipo de solicitação.');
+            $this->redirect('/client/privacidade');
+        }
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        if ($lgpdModel->countOpenByUser($_SESSION['user_id']) >= 3) {
+            $this->flash('warning', 'Você já possui solicitações em análise. Aguarde o retorno antes de abrir novas.');
+            $this->redirect('/client/privacidade');
+        }
+
+        $id = $lgpdModel->createRequest($_SESSION['user_id'], $tipo, $mensagem);
+        if ($id) {
+            \app\Helpers\Audit::log('lgpd_solicitacao_criada', 'lgpd_request', $id, ['tipo' => $tipo]);
+            $this->flash('success', 'Solicitação registrada (protocolo #' . $id . '). Responderemos em até 15 dias.');
+        } else {
+            $this->flash('error', 'Não foi possível registrar a solicitação. Tente novamente.');
+        }
+
+        $this->redirect('/client/privacidade');
+    }
+
+    // ==========================================
     // MÓDULO DE ORÇAMENTOS
     // ==========================================
 

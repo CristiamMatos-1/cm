@@ -118,11 +118,22 @@
                         placeholder="Mínimo 8 caracteres">
                 </div>
 
+                <div class="mb-6 -mt-2">
+                    <label class="flex items-start gap-2 text-sm text-gray-600">
+                        <input type="checkbox" name="reg_aceite_privacidade" value="1" required class="mt-1 h-4 w-4 rounded border-gray-300 text-corpBlue-600 focus:ring-corpBlue-500">
+                        <span>Li e concordo com a <a href="<?= BASE_URL ?>/auth/privacidade" target="_blank" rel="noopener" class="text-corpBlue-600 underline hover:text-corpBlue-800">Política de Privacidade</a>
+                        e com o tratamento dos meus dados pessoais para a prestação dos serviços. *</span>
+                    </label>
+                </div>
+
                 <button type="submit" class="w-full bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-900 focus:ring-4 focus:ring-gray-200 transition-all">
                     Criar Minha Conta
                 </button>
             </form>
         </div>
+        <p class="mt-4 text-center text-xs text-gray-500">
+            Tratamos seus dados conforme a LGPD. <a href="<?= BASE_URL ?>/auth/privacidade" class="underline hover:text-gray-700">Política de Privacidade</a>
+        </p>
     </div>
 
     <script>

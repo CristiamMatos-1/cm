@@ -37,6 +37,17 @@
                         </select>
                     </div>
                 </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Encarregado de dados (LGPD)</label>
+                        <input type="text" name="encarregado_nome" maxlength="150" value="<?= htmlspecialchars($empresa['encarregado_nome'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-corpBlue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail de privacidade</label>
+                        <input type="email" name="email_privacidade" maxlength="150" value="<?= htmlspecialchars($empresa['email_privacidade'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-corpBlue-500 outline-none">
+                    </div>
+                    <p class="sm:col-span-2 text-xs text-gray-500">Exibidos na Política de Privacidade como canal do titular de dados.</p>
+                </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Logo (JPG ou PNG, até 5 MB)</label>
                     <input type="file" name="logo" accept="image/jpeg,image/png" class="w-full text-sm text-gray-600">

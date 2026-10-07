@@ -41,7 +41,34 @@ Observações para evitar erro 404:
 | Instalação nova (banco vazio) | `database.sql` | phpMyAdmin > selecionar o banco > Importar |
 | Sistema já em produção | `database/migracao_correcao_schema.sql` | **Backup** > phpMyAdmin > selecionar o banco > Importar |
 
-A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`). Orçamentos antigos sem token ganham um token de autorização.
+A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, as colunas de consentimento/anonimização de `users`, os campos do encarregado em `companies`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`, `budget_history`, `lgpd_requests`, `audit_log`). Decisões de orçamentos antigos são registradas em `budget_history`. Orçamentos antigos sem token ganham um token de autorização.
+
+## Orçamentos: decisão definitiva, histórico e reabertura
+
+- Ao **aprovar ou rejeitar**, o orçamento fica **travado**: o mesmo link do cliente passa a mostrar apenas o resultado ("aprovado" ou "rejeitado", com data), sem botões de ação. Tentativas de nova resposta retornam HTTP 409.
+- **Somente o administrador** pode **reabrir** (`POST /admin/reabrirOrcamento/{id}`, justificativa obrigatória). O orçamento volta a "Pendente" e o mesmo link volta a aceitar uma resposta.
+- Toda decisão e reabertura é gravada em `budget_history` (ação, status anterior/novo, usuário, origem, motivo, IP, user-agent) e **nunca é apagada**. Orçamentos que já tiveram decisão não podem ser excluídos.
+- Administrador (ou técnico com a permissão `criar_orcamento`) pode criar uma **nova versão** (`POST /admin/duplicarOrcamento/{id}`): cópia pendente com novo token, mantendo o original e seu registro.
+- O link público exibe o nome do cliente mascarado (ex.: "Maria S.") e um histórico resumido (ação + data) sem dados pessoais.
+
+## LGPD (Lei 13.709/2018)
+
+| Recurso | Onde |
+|---|---|
+| Política de Privacidade (modelo, **requer revisão jurídica**) | `GET /auth/privacidade` (pública; link no rodapé, login e cadastro) |
+| Consentimento no cadastro (versão, data e IP) | checkbox em `auth/login`; colunas `users.consentimento_*` |
+| Encarregado (DPO) | Configurações > Dados da empresa (`companies.encarregado_nome`, `email_privacidade`) |
+| Direitos do titular (cliente) | `/client/privacidade`: ver dados, baixar JSON, abrir solicitações |
+| Atendimento (admin) | `/admin/lgpd`: exportar, anonimizar, atender/negar com resposta; card em "Editar Cliente" |
+| Anonimização | `LgpdModel::anonymizeUser`: remove dados pessoais e mídias de chamados, bloqueia o login e **preserva** notas fiscais, contratos e histórico (art. 16) |
+| Trilha de auditoria | tabela `audit_log` (exportações, anonimizações, exclusões, reabertura de orçamentos) e `budget_history` |
+| Arquivos privados | NF e anexos de chamados só são entregues por `/arquivo/nota/{id}` e `/arquivo/midia/{id}` após checar permissão; `.htaccess` bloqueia acesso direto a `uploads/invoices` e `uploads/tickets` |
+
+Observações:
+
+- `uploads/` e `error_log` não são versionados (`.gitignore`). Nunca publique documentos de clientes no repositório.
+- O texto de chamados é enviado à API do Google Gemini (transferência internacional) quando a análise por IA é usada; isso consta na política.
+- Alterou a política? Atualize `Lgpd::VERSAO_POLITICA` em `app/Helpers/Lgpd.php`.
 
 ## Deploy pelo cPanel (Git Version Control)
 

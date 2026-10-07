@@ -569,6 +569,96 @@ class AdminController extends Controller {
         $this->redirect('/admin/editarOrcamento/' . (int)$id);
     }
 
+    // ==========================================
+    // PRIVACIDADE (LGPD - DIREITOS DO TITULAR)
+    // ==========================================
+
+    private function exigirAdmin($destino = '/admin') {
+        if (($_SESSION['user_type'] ?? '') !== 'admin') {
+            $this->flash('error', 'Apenas administradores podem acessar o módulo de privacidade.');
+            $this->redirect($destino);
+        }
+    }
+
+    public function lgpd() {
+        $this->exigirAdmin();
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        $this->view('admin/lgpd_list', [
+            'title' => 'Privacidade (LGPD)',
+            'solicitacoes' => $lgpdModel->getAllRequests(),
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function responderLgpd($id) {
+        $this->requirePost();
+        $this->exigirAdmin();
+
+        $status = (string)($_POST['status'] ?? '');
+        $resposta = Security::sanitizeInput($_POST['motivo'] ?? '');
+
+        if ($resposta === '') {
+            $this->flash('error', 'Informe a resposta ao titular.');
+            $this->redirect('/admin/lgpd');
+        }
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        if ($lgpdModel->answerRequest($id, $status, $resposta, $_SESSION['user_id'])) {
+            Audit::log('lgpd_solicitacao_' . $status, 'lgpd_request', (int)$id);
+            $this->flash('success', 'Solicitação #' . (int)$id . ' atualizada.');
+        } else {
+            $this->flash('warning', 'A solicitação não está mais em análise.');
+        }
+
+        $this->redirect('/admin/lgpd');
+    }
+
+    public function exportarTitular($id) {
+        $this->requirePost();
+        $this->exigirAdmin();
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        $dados = $lgpdModel->exportUserData($id);
+
+        if (!$dados) {
+            $this->flash('error', 'Titular não encontrado.');
+            $this->redirect('/admin/lgpd');
+        }
+
+        Audit::log('lgpd_exportacao_admin', 'user', (int)$id);
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Disposition: attachment; filename="dados-titular-' . (int)$id . '-' . date('Ymd-His') . '.json"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        echo json_encode($dados, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    public function anonimizarTitular($id) {
+        $this->requirePost();
+        $this->exigirAdmin();
+
+        $lgpdModel = new \app\Models\LgpdModel();
+        $resultado = $lgpdModel->anonymizeUser($id, $_SESSION['user_id']);
+
+        if ($resultado['ok']) {
+            Audit::log('lgpd_anonimizacao', 'user', (int)$id);
+
+            $solicitacaoId = (int)($_POST['solicitacao_id'] ?? 0);
+            if ($solicitacaoId > 0) {
+                $solicitacao = $lgpdModel->getRequestById($solicitacaoId);
+                if ($solicitacao && (int)$solicitacao['user_id'] === (int)$id) {
+                    $lgpdModel->answerRequest($solicitacaoId, 'atendida', 'Seus dados pessoais foram anonimizados. Documentos que a lei exige manter (fiscais e contratuais) permanecem sem identificação pessoal.', $_SESSION['user_id']);
+                }
+            }
+        }
+
+        $this->flash($resultado['ok'] ? 'success' : 'error', $resultado['message']);
+        $this->redirect((($_POST['voltar'] ?? '') === 'clientes') ? '/admin/clientes' : '/admin/lgpd');
+    }
+
     public function servicoAvulso() {
         $userModel = new UserModel();
         $this->view('admin/servico_avulso', [
@@ -1064,8 +1154,15 @@ class AdminController extends Controller {
             'matriz_filial' => $_POST['matriz_filial'] ?? 'matriz',
             'telefone' => Security::sanitizeInput($_POST['telefone'] ?? ''),
             'email_contato' => Security::sanitizeInput($_POST['email_contato'] ?? ''),
-            'endereco_completo' => Security::sanitizeInput($_POST['endereco_completo'] ?? '')
+            'endereco_completo' => Security::sanitizeInput($_POST['endereco_completo'] ?? ''),
+            'encarregado_nome' => Security::sanitizeInput($_POST['encarregado_nome'] ?? ''),
+            'email_privacidade' => Security::sanitizeInput($_POST['email_privacidade'] ?? '')
         ];
+
+        if ($dados['email_privacidade'] !== '' && !filter_var($dados['email_privacidade'], FILTER_VALIDATE_EMAIL)) {
+            $this->flash('error', 'Informe um e-mail de privacidade válido.');
+            $this->redirect('/admin/configuracoes');
+        }
 
         if (!empty($_FILES['logo']['name']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             $file = $_FILES['logo'];
