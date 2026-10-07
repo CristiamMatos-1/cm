@@ -97,7 +97,7 @@ $filters = [
                             <a href="<?= BASE_URL ?>/admin/imprimirOrcamentoNovo/<?= (int)$orcamento['id'] ?>" target="_blank" rel="noopener" class="text-gray-500 hover:text-gray-800 p-1" title="Imprimir"><i class="fas fa-print"></i></a>
                             <a href="<?= BASE_URL ?>/admin/editarOrcamento/<?= (int)$orcamento['id'] ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="Detalhes / Editar"><i class="fas fa-edit"></i></a>
                             <?php if (!empty($podeExcluir)): ?>
-                                <form action="<?= BASE_URL ?>/admin/excluirOrcamento/<?= (int)$orcamento['id'] ?>" method="POST" data-hide-when-approved class="<?= $orcamento['status'] === 'aprovado' ? 'hidden' : '' ?>"
+                                <form action="<?= BASE_URL ?>/admin/excluirOrcamento/<?= (int)$orcamento['id'] ?>" method="POST" data-hide-when-approved class="<?= in_array($orcamento['status'], ['aprovado', 'rejeitado'], true) ? 'hidden' : '' ?>"
                                       data-confirm="O orçamento #<?= (int)$orcamento['id'] ?> será excluído permanentemente. Esta ação não pode ser desfeita." data-confirm-title="Excluir orçamento?" data-confirm-button="Sim, excluir">
                                     <input type="hidden" name="csrf_token" value="<?= Security::esc($csrf_token) ?>">
                                     <button type="submit" data-no-loading class="text-red-600 hover:text-red-800 p-1" title="Excluir"><i class="fas fa-trash"></i></button>

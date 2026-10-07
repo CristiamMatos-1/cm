@@ -201,6 +201,17 @@ class ChamadoModel extends Model {
     /**
      * Busca todas as mídias de um chamado
      */
+    public function getMediaById($id) {
+        $stmt = $this->db->prepare("
+            SELECT m.id, m.file_url, m.tipo, t.cliente_id, t.tecnico_id, t.status
+            FROM ticket_media m JOIN tickets t ON t.id = m.ticket_id
+            WHERE m.id = :id
+        ");
+        $stmt->bindValue(':id', (int)$id, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+
     public function getMediaByTicket($ticket_id) {
         $stmt = $this->db->prepare("SELECT * FROM ticket_media WHERE ticket_id = :ticket_id ORDER BY created_at ASC");
         $stmt->bindParam(':ticket_id', $ticket_id);

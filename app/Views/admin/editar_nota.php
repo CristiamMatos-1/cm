@@ -41,7 +41,7 @@
                     <?php if(!empty($nota['arquivo_url'])): ?>
                         <div class="mt-3 p-3 bg-gray-50 border border-gray-200 rounded flex items-center justify-between">
                             <span class="text-sm text-gray-600"><i class="fas fa-file-pdf text-red-500 mr-2"></i> Arquivo atual anexado</span>
-                            <a href="<?= BASE_URL . '/' . htmlspecialchars($nota['arquivo_url']) ?>" target="_blank" class="text-sm text-corpBlue-600 hover:text-corpBlue-800 font-medium">Visualizar Documento</a>
+                            <a href="<?= BASE_URL ?>/arquivo/nota/<?= (int)$nota['id'] ?>" target="_blank" class="text-sm text-corpBlue-600 hover:text-corpBlue-800 font-medium">Visualizar Documento</a>
                         </div>
                     <?php endif; ?>
                 </div>

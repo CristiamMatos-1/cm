@@ -151,7 +151,12 @@ class UserModel extends Model {
      */
     public function createUser($data) {
         try {
-            $stmt = $this->db->prepare("
+            $comConsentimento = $this->columnExists('users', 'consentimento_em');
+
+            $stmt = $this->db->prepare($comConsentimento ? "
+                INSERT INTO users (nome, cpf_cnpj, email, telefone, senha, perfil, consentimento_em, consentimento_versao, consentimento_ip) 
+                VALUES (:nome, :cpf_cnpj, :email, :telefone, :senha, 'cliente', NOW(), :versao, :ip)
+            " : "
                 INSERT INTO users (nome, cpf_cnpj, email, telefone, senha, perfil) 
                 VALUES (:nome, :cpf_cnpj, :email, :telefone, :senha, 'cliente')
             ");
@@ -161,9 +166,17 @@ class UserModel extends Model {
             $stmt->bindParam(':email', $data['email']);
             $stmt->bindParam(':telefone', $data['telefone']);
             $stmt->bindParam(':senha', $data['senha_hash']);
+
+            if ($comConsentimento) {
+                $versao = \app\Helpers\Lgpd::VERSAO_POLITICA;
+                $ip = \app\Helpers\Audit::clientIp();
+                $stmt->bindParam(':versao', $versao);
+                $stmt->bindParam(':ip', $ip);
+            }
             
             return $stmt->execute();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            error_log('Erro ao criar usuário: ' . $e->getMessage());
             return false;
         }
     }
@@ -210,6 +223,7 @@ class UserModel extends Model {
      * Exclui um usuário
      */
     public function deleteUser($id) {
+        \app\Helpers\Audit::log('usuario_excluido', 'user', (int)$id);
         $stmt = $this->db->prepare("DELETE FROM users WHERE id = :id");
         $stmt->bindParam(':id', $id);
         return $stmt->execute();

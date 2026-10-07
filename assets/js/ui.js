@@ -234,13 +234,25 @@
             if (!form.hasAttribute || !form.hasAttribute('data-confirm') || form.dataset.confirmed === '1') return;
             event.preventDefault();
             var submitter = event.submitter;
+            var reasonLabel = form.getAttribute('data-confirm-reason');
             UI.confirm({
                 title: form.getAttribute('data-confirm-title') || 'Confirmar ação',
                 message: form.getAttribute('data-confirm'),
                 confirmText: form.getAttribute('data-confirm-button') || 'Confirmar',
-                variant: form.getAttribute('data-confirm-variant') || 'danger'
+                variant: form.getAttribute('data-confirm-variant') || 'danger',
+                reason: reasonLabel ? { label: reasonLabel, placeholder: form.getAttribute('data-confirm-reason-placeholder') || '', required: true, maxLength: 1000 } : undefined
             }).then(function (result) {
                 if (!result.confirmed) return;
+                if (reasonLabel) {
+                    var field = form.querySelector('input[name="motivo"]');
+                    if (!field) {
+                        field = document.createElement('input');
+                        field.type = 'hidden';
+                        field.name = 'motivo';
+                        form.appendChild(field);
+                    }
+                    field.value = result.reason;
+                }
                 form.dataset.confirmed = '1';
                 if (submitter) UI.setLoading(submitter, true);
                 form.submit();

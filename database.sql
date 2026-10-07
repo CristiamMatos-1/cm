@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS users (
     bairro VARCHAR(100) NULL,
     cidade VARCHAR(100) NULL,
     estado VARCHAR(2) NULL,
+    consentimento_em DATETIME NULL, -- LGPD: data/hora do aceite da Política de Privacidade
+    consentimento_versao VARCHAR(20) NULL,
+    consentimento_ip VARCHAR(45) NULL,
+    anonimizado_em DATETIME NULL, -- LGPD: preenchido quando o titular é anonimizado
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -39,6 +43,8 @@ CREATE TABLE IF NOT EXISTS companies (
     razao_social VARCHAR(150) NOT NULL,
     cnpj VARCHAR(20) NOT NULL UNIQUE,
     logo_url VARCHAR(255),
+    encarregado_nome VARCHAR(150) NULL, -- LGPD: encarregado pelo tratamento de dados (DPO)
+    email_privacidade VARCHAR(150) NULL, -- LGPD: canal de contato do titular
     matriz_filial ENUM('matriz', 'filial', 'parceira') DEFAULT 'matriz',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -221,4 +227,54 @@ CREATE TABLE IF NOT EXISTS financeiro_contabil (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_fornecedor_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Histórico (trilha de auditoria) das decisões e reaberturas de orçamentos.
+-- Nunca é apagado ao reabrir um orçamento: mantém quem/quando/de onde.
+CREATE TABLE IF NOT EXISTS budget_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    budget_id INT NOT NULL,
+    acao VARCHAR(20) NOT NULL, -- criado | aprovado | rejeitado | reaberto | reativado | expirado | nova_versao
+    status_anterior VARCHAR(20) NULL,
+    status_novo VARCHAR(20) NULL,
+    usuario_id INT NULL,
+    origem VARCHAR(20) NOT NULL DEFAULT 'sistema', -- admin | tecnico | cliente | link_publico | sistema
+    motivo TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_budget_history_budget (budget_id),
+    FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Solicitações de titulares de dados (LGPD, art. 18)
+CREATE TABLE IF NOT EXISTS lgpd_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tipo VARCHAR(30) NOT NULL, -- acesso | correcao | anonimizacao | portabilidade | revogacao_consentimento | outro
+    mensagem TEXT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'aberta', -- aberta | atendida | negada
+    resposta TEXT NULL,
+    atendido_por INT NULL,
+    atendido_em DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_lgpd_requests_status (status),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (atendido_por) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- Registro de ações sensíveis (exportação, anonimização, exclusão de dados pessoais)
+CREATE TABLE IF NOT EXISTS audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NULL,
+    acao VARCHAR(60) NOT NULL,
+    entidade VARCHAR(40) NOT NULL,
+    entidade_id INT NULL,
+    detalhes TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_log_entidade (entidade, entidade_id),
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

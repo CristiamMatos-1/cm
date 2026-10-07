@@ -52,6 +52,10 @@ use app\Helpers\Security;
                 <p class="mt-3 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3"><i class="fas fa-comment-dots mr-1"></i> <strong>Seu motivo:</strong> <?= Security::esc($o['motivo_rejeicao']) ?></p>
             <?php endif; ?>
 
+            <div data-budget-decided-only data-for="decided" class="<?= in_array($o['status'], ['aprovado', 'rejeitado'], true) ? '' : 'hidden' ?> mt-4 p-3 rounded-lg text-sm bg-blue-50 text-blue-800">
+                <i class="fas fa-info-circle mr-1"></i> Sua resposta foi registrada e não pode mais ser alterada por você. Caso precise de uma nova análise, entre em contato com a empresa: somente um administrador pode reabrir o orçamento.
+            </div>
+
             <?php if ($pendente): ?>
                 <div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end border-t border-gray-200 mt-4 pt-4">
                     <form action="<?= BASE_URL ?>/client/responderOrcamento/<?= (int)$o['id'] ?>" method="POST" data-budget-decision-form data-decision="rejeitar" data-budget-ref="<?= (int)$o['id'] ?>" data-budget-title="<?= Security::esc($o['titulo']) ?>">

@@ -26,7 +26,7 @@ class AuthController extends Controller {
         $userModel = new UserModel();
         $user = $userModel->getUserByCpfCnpj($cpf_cnpj);
 
-        if ($user && password_verify($senha, $user['senha'])) {
+        if ($user && empty($user['anonimizado_em']) && password_verify($senha, $user['senha'])) {
             // Prevenção de Fixation de Sessão
             session_regenerate_id(true);
 
@@ -61,6 +61,14 @@ class AuthController extends Controller {
             $this->view('auth/login', [
                 'csrf_token' => Security::generateCsrfToken(),
                 'error' => 'Por favor, preencha todos os campos obrigatórios.'
+            ]);
+            return;
+        }
+
+        if (empty($_POST['reg_aceite_privacidade'])) {
+            $this->view('auth/login', [
+                'csrf_token' => Security::generateCsrfToken(),
+                'error' => 'Para criar a conta, é necessário ler e aceitar a Política de Privacidade.'
             ]);
             return;
         }
@@ -111,6 +119,24 @@ class AuthController extends Controller {
         }
     }
 
+    /**
+     * Política de Privacidade (pública, LGPD art. 9º e 23).
+     */
+    public function privacidade() {
+        $empresa = [];
+        try {
+            $empresa = (new \app\Models\ConfigModel())->getCompanyInfo() ?: [];
+        } catch (\Throwable $e) {
+            error_log('Política de privacidade: dados da empresa indisponíveis: ' . $e->getMessage());
+        }
+
+        $this->view('auth/privacidade', [
+            'empresa' => $empresa,
+            'versao' => \app\Helpers\Lgpd::VERSAO_POLITICA,
+            'logado' => isset($_SESSION['user_id'])
+        ]);
+    }
+
     public function logout() {
         session_unset();
         session_destroy();
@@ -139,6 +165,7 @@ class AuthController extends Controller {
         $this->view('auth/autorizar_orcamento', [
             'budget' => $budget,
             'items' => $orcamentoModel->getBudgetItems($budget['id']),
+            'historico' => $orcamentoModel->getPublicHistory($budget['id']),
             'csrf_token' => Security::generateCsrfToken()
         ]);
     }
@@ -164,7 +191,7 @@ class AuthController extends Controller {
             $motivo = $decision === \app\Models\OrcamentoModel::DECISION_REJECT
                 ? Security::sanitizeInput($_POST['motivo'] ?? '')
                 : null;
-            $resultado = $orcamentoModel->decide($budget['id'], $decision, $budget['cliente_id'], $motivo);
+            $resultado = $orcamentoModel->decide($budget['id'], $decision, $budget['cliente_id'], $motivo, 'link_publico');
         }
 
         if ($this->isAjax()) {

@@ -1,0 +1,13 @@
+# Arquivos enviados por usuários contêm dados pessoais/fiscais (LGPD): nunca versionar.
+/uploads/invoices/*
+/uploads/tickets/*
+/uploads/company/*
+!/uploads/**/.gitkeep
+
+# Logs do servidor (podem conter dados pessoais e detalhes de infraestrutura)
+error_log
+*.log
+
+# Configuração local / segredos
+.env
+.env.*

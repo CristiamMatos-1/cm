@@ -133,4 +133,31 @@ class UploadHelper {
 
         return $file_ary;
     }
+
+    /**
+     * Converte o caminho salvo no banco (ex.: "uploads/invoices/nf_x.pdf") no caminho real em disco,
+     * garantindo que o arquivo esteja dentro da pasta esperada (evita path traversal).
+     */
+    public static function resolveStoredPath($stored, $subdir) {
+        if (!in_array($subdir, ['invoices', 'tickets'], true)) {
+            return null;
+        }
+
+        $name = basename(str_replace('\\', '/', (string)$stored));
+        if ($name === '' || $name === '.' || $name === '..' || !preg_match('/^[A-Za-z0-9._-]+$/', $name)) {
+            return null;
+        }
+
+        $base = realpath(__DIR__ . '/../../uploads/' . $subdir);
+        if ($base === false) {
+            return null;
+        }
+
+        $path = realpath($base . DIRECTORY_SEPARATOR . $name);
+        if ($path === false || strpos($path, $base . DIRECTORY_SEPARATOR) !== 0) {
+            return null;
+        }
+
+        return $path;
+    }
 }

@@ -79,7 +79,7 @@
                             <td class="px-6 py-4 text-sm text-gray-600"><?= htmlspecialchars($n['cliente_nome']) ?></td>
                             <td class="px-6 py-4 text-sm text-gray-600"><?= date('d/m/Y', strtotime($n['data_emissao'])) ?></td>
                             <td class="px-6 py-4 text-right text-sm">
-                                <a href="<?= BASE_URL . '/' . htmlspecialchars($n['arquivo_url']) ?>" target="_blank" class="text-corpBlue-600 hover:text-corpBlue-900 mr-3">
+                                <a href="<?= BASE_URL ?>/arquivo/nota/<?= (int)$n['id'] ?>" target="_blank" class="text-corpBlue-600 hover:text-corpBlue-900 mr-3">
                                     <i class="fas fa-file-pdf"></i> Visualizar
                                 </a>
                                 <a href="<?= BASE_URL ?>/admin/editarNota/<?= $n['id'] ?>" class="text-indigo-600 hover:text-indigo-900">Editar</a>

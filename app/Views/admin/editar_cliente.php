@@ -90,6 +90,32 @@
     </div>
 </div>
 
+<div class="max-w-4xl mx-auto mt-6">
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h3 class="font-semibold text-gray-800 mb-1"><i class="fas fa-user-lock mr-2 text-corpBlue-500"></i> Privacidade (LGPD)</h3>
+        <?php if (!empty($cliente['anonimizado_em'])): ?>
+            <p class="text-sm text-gray-600">Titular anonimizado em <?= \app\Helpers\UI::date($cliente['anonimizado_em'], true) ?>.</p>
+        <?php else: ?>
+            <p class="text-sm text-gray-500 mb-4">Para atender pedidos do titular, prefira a <strong>anonimização</strong> à exclusão: ela remove os dados pessoais, mas preserva contratos, notas fiscais e histórico exigidos por lei.
+                <?php if (!empty($cliente['consentimento_em'])): ?>Consentimento registrado em <?= \app\Helpers\UI::date($cliente['consentimento_em'], true) ?>.<?php endif; ?></p>
+            <div class="flex flex-wrap gap-2">
+                <form action="<?= BASE_URL ?>/admin/exportarTitular/<?= (int)$cliente['id'] ?>" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
+                    <button type="submit" data-no-loading class="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"><i class="fas fa-download mr-2"></i> Exportar dados (JSON)</button>
+                </form>
+                <form action="<?= BASE_URL ?>/admin/anonimizarTitular/<?= (int)$cliente['id'] ?>" method="POST"
+                      data-confirm="Os dados pessoais deste cliente serão removidos de forma irreversível (nome, contato, endereço, mídias dos chamados) e o acesso será bloqueado. Dados fiscais e contratuais serão mantidos sem identificação."
+                      data-confirm-title="Anonimizar cliente?" data-confirm-button="Sim, anonimizar">
+                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?? '' ?>">
+                    <input type="hidden" name="voltar" value="clientes">
+                    <button type="submit" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"><i class="fas fa-user-slash mr-2"></i> Anonimizar cliente</button>
+                </form>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+
 <script>
 function buscarCep(cep) {
     cep = cep.replace(/\D/g, '');

@@ -19,6 +19,7 @@ if ($userType === 'cliente') {
         ['/client/orcamentos', 'fa-hand-holding-usd', 'Meus Orçamentos', 'client', ['orcamentos']],
         ['/client/contratos', 'fa-file-signature', 'Contratos & NF', 'client', ['contratos']],
         ['/client/patrimonio', 'fa-desktop', 'Meu Patrimônio', 'client', ['patrimonio']],
+        ['/client/privacidade', 'fa-user-lock', 'Privacidade (LGPD)', 'client', ['privacidade']],
     ];
 } elseif ($userType === 'tecnico') {
     $perms = [];
@@ -53,6 +54,7 @@ if ($userType === 'cliente') {
         ['/admin/financeiro', 'fa-file-signature', 'Contratos e NF', 'admin', ['financeiro', 'novocontrato', 'editarcontrato', 'novanota', 'editarnota']],
         ['/admin/contabil', 'fa-file-invoice-dollar', 'Financeiro Contábil', 'admin', ['contabil']],
         ['/admin/usuarios', 'fa-user-shield', 'Usuários & Permissões', 'admin', ['usuarios', 'novousuario', 'editarusuario']],
+        ['/admin/lgpd', 'fa-user-lock', 'Privacidade (LGPD)', 'admin', ['lgpd']],
         ['/admin/configuracoes', 'fa-cogs', 'Configurações', 'admin', ['configuracoes', 'novoativo']],
     ];
 }

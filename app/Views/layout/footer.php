@@ -1,3 +1,6 @@
+            <footer class="px-4 py-4 text-center text-xs text-gray-400">
+                <a href="<?= BASE_URL ?>/auth/privacidade" class="hover:text-corpBlue-700 underline">Política de Privacidade (LGPD)</a>
+            </footer>
         </main>
     </div>
 

@@ -83,27 +83,37 @@ class ConfigModel extends Model {
 
     public function updateCompany($data) {
         $existing = $this->getCompanyInfo();
-        $logo = $data['logo_url'] ?? null;
 
-        if ($existing) {
-            $sql = "UPDATE companies SET razao_social = :razao_social, cnpj = :cnpj, matriz_filial = :matriz_filial";
-            if ($logo) {
-                $sql .= ", logo_url = :logo_url";
+        $columns = [
+            'razao_social' => $data['razao_social'],
+            'cnpj' => $data['cnpj'],
+            'matriz_filial' => $data['matriz_filial'],
+        ];
+        if (!empty($data['logo_url'])) {
+            $columns['logo_url'] = $data['logo_url'];
+        }
+        foreach (['encarregado_nome', 'email_privacidade'] as $optional) {
+            if (array_key_exists($optional, $data) && $this->columnExists('companies', $optional)) {
+                $columns[$optional] = $data[$optional] !== '' ? $data[$optional] : null;
             }
-            $sql .= " WHERE id = :id";
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindValue(':id', (int)$existing['id'], \PDO::PARAM_INT);
-        } else {
-            $stmt = $this->db->prepare($logo
-                ? "INSERT INTO companies (razao_social, cnpj, matriz_filial, logo_url) VALUES (:razao_social, :cnpj, :matriz_filial, :logo_url)"
-                : "INSERT INTO companies (razao_social, cnpj, matriz_filial) VALUES (:razao_social, :cnpj, :matriz_filial)");
         }
 
-        $stmt->bindValue(':razao_social', $data['razao_social']);
-        $stmt->bindValue(':cnpj', $data['cnpj']);
-        $stmt->bindValue(':matriz_filial', $data['matriz_filial']);
-        if ($logo) {
-            $stmt->bindValue(':logo_url', $logo);
+        if ($existing) {
+            $sets = [];
+            foreach (array_keys($columns) as $name) {
+                $sets[] = "`$name` = :$name";
+            }
+            $stmt = $this->db->prepare("UPDATE companies SET " . implode(', ', $sets) . " WHERE id = :id");
+            $stmt->bindValue(':id', (int)$existing['id'], \PDO::PARAM_INT);
+        } else {
+            $names = array_keys($columns);
+            $stmt = $this->db->prepare(
+                "INSERT INTO companies (`" . implode('`, `', $names) . "`) VALUES (:" . implode(', :', $names) . ")"
+            );
+        }
+
+        foreach ($columns as $name => $value) {
+            $stmt->bindValue(':' . $name, $value);
         }
 
         return $stmt->execute();
