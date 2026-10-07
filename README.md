@@ -43,6 +43,18 @@ Observações para evitar erro 404:
 
 A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`). Orçamentos antigos sem token ganham um token de autorização.
 
+## Módulo de Ordens de Serviço / Consultoria / Projetos (backend base)
+
+Banco: `database/migracao_modulo_os.sql` (idempotente; as mesmas tabelas estão em `database.sql`). Requer MySQL 5.7+/MariaDB 10.2+ (coluna gerada `valor_total`).
+
+| Camada | Local | Responsabilidade |
+|---|---|---|
+| Domínio | `app/Domain/ServiceOrder/` | `ServiceOrder` (aggregate com todas as regras), `ServiceOrderStatus` (workflow), `ServiceOrderType`, `EquipmentType`, `Money`, `MaintenanceDetails`, `ConsultingDetails`, exceções |
+| DTOs | `app/DTOs/ServiceOrder/` | `OpenServiceOrderDTO`, `MaintenanceQuoteDTO`, `ConsultingReportDTO`, `ClientDecisionDTO`, `AuditActorDTO` (validam e normalizam a entrada) |
+| Persistência | `app/Models/ServiceOrder*Model.php` | `ServiceOrderModel` (comandos atômicos com `FOR UPDATE`), logs, links com token (hash SHA-256) e notificações |
+
+Workflow: `rascunho → aguardando_diagnostico → aguardando_aprovacao_cliente → (cliente) aprovado | rejeitado → em_execucao → concluido`. Diagnóstico e valores só são editáveis até o envio ao cliente; a decisão do cliente é única, grava log com data/hora, IP e user-agent e notifica a equipe.
+
 ## Deploy pelo cPanel (Git Version Control)
 
 O arquivo `.cpanel.yml` copia o código para `/home2/coninfom/public_html/cm` (sem `.git`, `database/`, `database.sql`, `README.md`, zips e sem tocar em `uploads/`).
