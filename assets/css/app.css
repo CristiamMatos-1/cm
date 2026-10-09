@@ -44,3 +44,8 @@
 .filter-chip { transition: background-color .15s, color .15s, box-shadow .15s; }
 .filter-chip.is-active { background-color: #1e3a8a; color: #fff; border-color: #1e3a8a; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
 .filter-chip.is-active .chip-count { background-color: rgba(255,255,255,.2); color: #fff; }
+
+/* Feed Rápido */
+@keyframes feed-card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.feed-card { animation: feed-card-in .3s ease-out; }
+@media (prefers-reduced-motion: reduce) { .feed-card { animation: none; } }

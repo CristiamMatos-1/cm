@@ -11,6 +11,7 @@ use app\Models\AvulsoServiceModel;
 use app\Models\ReportModel;
 use app\Models\ContabilModel;
 use app\Models\ProjetoModel;
+use app\Models\FeedModel;
 use app\Helpers\Security;
 use app\Helpers\UploadHelper;
 
@@ -987,6 +988,163 @@ class AdminController extends Controller {
         $projetoModel->atualizarProjeto($id, $dados);
 
         $this->redirect('/admin/projetos');
+    }
+
+    // ==========================================
+    // MÓDULO: FEED RÁPIDO (postagens sem página individual/slug)
+    // ==========================================
+
+    private const FEED_TEXTO_MAX = 5000;
+
+    public function feed() {
+        $feedModel = new FeedModel();
+
+        $this->view('admin/feed_list', [
+            'title' => 'Feed Rápido',
+            'posts' => $feedModel->getAllPosts(),
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function novoFeedPost() {
+        $this->view('admin/feed_form', [
+            'title' => 'Nova Postagem do Feed',
+            'post' => null,
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function salvarFeedPost() {
+        $this->requirePost();
+        $this->gravarFeedPost(null);
+    }
+
+    public function editarFeedPost($id) {
+        $feedModel = new FeedModel();
+        $post = $feedModel->getPostById($id);
+
+        if (!$post) {
+            $this->flash('error', 'Postagem não encontrada.');
+            $this->redirect('/admin/feed');
+            return;
+        }
+
+        $this->view('admin/feed_form', [
+            'title' => 'Editar Postagem #' . (int)$id,
+            'post' => $post,
+            'csrf_token' => Security::generateCsrfToken()
+        ]);
+    }
+
+    public function salvarEdicaoFeedPost($id) {
+        $this->requirePost();
+        $this->gravarFeedPost((int)$id);
+    }
+
+    public function excluirFeedPost($id) {
+        $this->requirePost();
+
+        $feedModel = new FeedModel();
+        $post = $feedModel->getPostById($id);
+
+        if ($post) {
+            $feedModel->deletePost($id);
+            UploadHelper::deleteFeedMedia($post['caminho_midia']);
+            $this->flash('success', 'Postagem excluída com sucesso.');
+        } else {
+            $this->flash('error', 'Postagem não encontrada.');
+        }
+
+        $this->redirect('/admin/feed');
+    }
+
+    /**
+     * Cria ($id = null) ou atualiza uma postagem do feed, tratando o upload da mídia.
+     * Em caso de erro de validação, reexibe o formulário preservando o que foi digitado.
+     */
+    private function gravarFeedPost($id) {
+        $feedModel = new FeedModel();
+        $atual = null;
+
+        if ($id !== null) {
+            $atual = $feedModel->getPostById($id);
+            if (!$atual) {
+                $this->flash('error', 'Postagem não encontrada.');
+                $this->redirect('/admin/feed');
+                return;
+            }
+        }
+
+        $status = $_POST['status'] ?? 'publicado';
+        $dados = [
+            'texto_conteudo' => Security::sanitizeInput($_POST['texto_conteudo'] ?? ''),
+            'status' => in_array($status, FeedModel::STATUS, true) ? $status : 'publicado',
+            'tipo_midia' => $atual['tipo_midia'] ?? 'none',
+            'caminho_midia' => $atual['caminho_midia'] ?? null
+        ];
+
+        $erro = null;
+        $novoArquivo = null;
+        $midiaAlterada = false;
+        $temUpload = isset($_FILES['midia']) && ($_FILES['midia']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+
+        if (mb_strlen($dados['texto_conteudo'], 'UTF-8') > self::FEED_TEXTO_MAX) {
+            $erro = 'O texto pode ter no máximo ' . self::FEED_TEXTO_MAX . ' caracteres.';
+        } elseif ($temUpload) {
+            $upload = UploadHelper::processFeedMedia($_FILES['midia']);
+            if (isset($upload['error'])) {
+                $erro = $upload['error'];
+            } else {
+                $novoArquivo = $upload['success']['path'];
+                $dados['caminho_midia'] = $novoArquivo;
+                $dados['tipo_midia'] = $upload['success']['tipo'];
+                $midiaAlterada = true;
+            }
+        } elseif (!empty($_POST['remover_midia'])) {
+            $dados['caminho_midia'] = null;
+            $dados['tipo_midia'] = 'none';
+            $midiaAlterada = true;
+        }
+
+        if (!$erro && $dados['texto_conteudo'] === '' && $dados['tipo_midia'] === 'none') {
+            $erro = 'Escreva um texto ou envie uma imagem/vídeo para publicar.';
+        }
+
+        if ($erro) {
+            if ($novoArquivo) {
+                UploadHelper::deleteFeedMedia($novoArquivo);
+            }
+            $this->flash('error', $erro);
+            $this->view('admin/feed_form', [
+                'title' => $id === null ? 'Nova Postagem do Feed' : 'Editar Postagem #' . $id,
+                'post' => array_merge($atual ?? [], $dados, $id === null ? [] : ['id' => $id], [
+                    'caminho_midia' => $atual['caminho_midia'] ?? null,
+                    'tipo_midia' => $atual['tipo_midia'] ?? 'none'
+                ]),
+                'csrf_token' => Security::generateCsrfToken()
+            ]);
+            return;
+        }
+
+        try {
+            if ($id === null) {
+                $feedModel->createPost($dados);
+            } else {
+                $feedModel->updatePost($id, $dados);
+            }
+        } catch (\Throwable $e) {
+            if ($novoArquivo) {
+                UploadHelper::deleteFeedMedia($novoArquivo);
+            }
+            throw $e;
+        }
+
+        if ($midiaAlterada && $atual) {
+            UploadHelper::deleteFeedMedia($atual['caminho_midia']);
+        }
+
+        $this->flash('success', $id === null ? 'Postagem publicada no feed.' : 'Postagem atualizada com sucesso.');
+        $this->redirect('/admin/feed');
     }
 
     // ==========================================

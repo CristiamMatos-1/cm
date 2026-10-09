@@ -50,6 +50,7 @@ if ($userType === 'cliente') {
         ['/admin/relatorios', 'fa-print', 'Relatórios e Balanço', 'admin', ['relatorios']],
         ['/admin/clientes', 'fa-users', 'Clientes', 'admin', ['clientes', 'editarcliente']],
         ['/admin/projetos', 'fa-project-diagram', 'Eng. de Software', 'admin', ['projetos', 'novoprojeto', 'editarprojeto']],
+        ['/admin/feed', 'fa-stream', 'Feed Rápido', 'admin', ['feed', 'novofeedpost', 'editarfeedpost']],
         ['/admin/financeiro', 'fa-file-signature', 'Contratos e NF', 'admin', ['financeiro', 'novocontrato', 'editarcontrato', 'novanota', 'editarnota']],
         ['/admin/contabil', 'fa-file-invoice-dollar', 'Financeiro Contábil', 'admin', ['contabil']],
         ['/admin/usuarios', 'fa-user-shield', 'Usuários & Permissões', 'admin', ['usuarios', 'novousuario', 'editarusuario']],
