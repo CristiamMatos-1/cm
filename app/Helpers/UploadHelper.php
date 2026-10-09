@@ -118,6 +118,68 @@ class UploadHelper {
     }
 
     /**
+     * Upload único de mídia do Feed Rápido (imagem JPG/PNG/WEBP ou vídeo MP4).
+     * Retorna ['success' => ['path' => 'uploads/feed/...', 'tipo' => 'image'|'video']] ou ['error' => msg].
+     */
+    public static function processFeedMedia($file) {
+        $uploadDir = __DIR__ . '/../../uploads/feed/';
+
+        if (!is_array($file) || !isset($file['error']) || is_array($file['error'])) {
+            return ['error' => "Envio de arquivo inválido."];
+        }
+
+        if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE) {
+            return ['error' => "Arquivo excede o tamanho máximo permitido pelo servidor."];
+        }
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return ['error' => "Erro no upload do arquivo."];
+        }
+
+        if ($file['size'] > self::$maxSize) {
+            return ['error' => "Arquivo excede o limite de 20MB."];
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        $isImage = in_array($mimeType, self::$allowedImageTypes, true);
+        $isVideo = $mimeType === 'video/mp4';
+
+        if (!$isImage && !$isVideo) {
+            return ['error' => "Formato não suportado. Envie uma imagem (JPG, PNG ou WEBP) ou um vídeo MP4."];
+        }
+
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            return ['error' => "Não foi possível criar a pasta de mídias do feed."];
+        }
+
+        $safeName = 'feed_' . bin2hex(random_bytes(12)) . '.' . self::$extensionByMime[$mimeType];
+
+        if (!move_uploaded_file($file['tmp_name'], $uploadDir . $safeName)) {
+            return ['error' => "Falha ao salvar o arquivo no servidor."];
+        }
+
+        return ['success' => [
+            'path' => 'uploads/feed/' . $safeName,
+            'tipo' => $isImage ? 'image' : 'video'
+        ]];
+    }
+
+    /**
+     * Remove um arquivo do Feed Rápido. Só aceita caminhos gerados por processFeedMedia().
+     */
+    public static function deleteFeedMedia($path) {
+        if (!is_string($path) || !preg_match('#^uploads/feed/feed_[a-f0-9]{24}\.(jpg|png|webp|mp4)$#', $path)) {
+            return false;
+        }
+
+        $file = __DIR__ . '/../../' . $path;
+        return is_file($file) && unlink($file);
+    }
+
+    /**
      * Helper para reorganizar o array do $_FILES quando multiple="multiple"
      */
     private static function reArrayFiles($file_post) {

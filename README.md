@@ -43,6 +43,8 @@ Observações para evitar erro 404:
 
 A migração é idempotente (pode rodar mais de uma vez) e não apaga dados. Ela adiciona as colunas de `users` (`permissoes`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `responsavel_nome`), as colunas v2 de `tickets` e `budgets`, o valor `Servico Avulso` em `tickets.tipo_servico`, e cria as tabelas ausentes (`budget_items`, `avulso_services`, `projetos_software`, `financeiro_contabil`). Orçamentos antigos sem token ganham um token de autorização.
 
+Para habilitar o Feed Rápido em um banco já existente, importe também `database/migracao_feed_posts.sql` (cria apenas a tabela `feed_posts`, sem alterar dados).
+
 ## Deploy pelo cPanel (Git Version Control)
 
 O arquivo `.cpanel.yml` copia o código para `/home2/coninfom/public_html/cm` (sem `.git`, `database/`, `database.sql`, `README.md`, zips e sem tocar em `uploads/`).
@@ -142,6 +144,29 @@ CREATE TABLE avulso_services (
 - `POST /admin/excluirServicoAvulso/{id}` - Excluir serviço (CSRF)
 
 > Ações destrutivas (`excluir*`, `enviarEmail*`, `assumirChamado`, `analisarIA`) agora exigem POST com `csrf_token`.
+
+### 📰 Feed Rápido (postagens estilo linha do tempo)
+
+Postagens curtas (texto + imagem JPG/PNG/WEBP ou vídeo MP4 de até 20 MB) exibidas em bloco, com rolagem infinita. **Não geram página individual/slug.**
+
+**Banco:** rode `database/migracao_feed_posts.sql` em produção (idempotente) ou use `database.sql` em instalação nova. Tabela `feed_posts`: `id`, `texto_conteudo`, `tipo_midia` (`image`/`video`/`none`), `caminho_midia`, `data_criacao`, `status` (`publicado`/`rascunho`). Os arquivos ficam em `uploads/feed/`.
+
+**Endpoints:**
+- `GET /admin/feed` - Listar postagens (menu "Feed Rápido", somente admin)
+- `GET /admin/novoFeedPost` / `POST /admin/salvarFeedPost` - Criar (multipart, CSRF)
+- `GET /admin/editarFeedPost/{id}` / `POST /admin/salvarEdicaoFeedPost/{id}` - Editar, trocar ou remover a mídia
+- `POST /admin/excluirFeedPost/{id}` - Excluir postagem e arquivo (CSRF)
+- `GET /feed` - Página pública de demonstração do feed
+- `GET /feed/carregar?offset=0&limit=5` - JSON público da rolagem infinita: `{success, html, count, has_more, next_offset}` (`limit` máx. 20; só retorna `publicado`)
+
+**Incluir em qualquer página** (ex.: logo abaixo da seção "nossas últimas matérias"):
+
+```html
+<section id="feed-rapido" data-endpoint="/cm/feed/carregar" data-limit="5"></section>
+<script src="/cm/assets/js/feed.js" defer></script>
+```
+
+O markup dos cards fica em `app/Views/feed/_card.php` (classes Tailwind, como o restante do sistema); o carregamento automático ao chegar no fim do contêiner está em `assets/js/feed.js`.
 
 ### ✅ Fluxo de Aprovação/Rejeição
 
